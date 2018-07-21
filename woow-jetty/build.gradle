@@ -4,4 +4,10 @@ dependencies {
     compile "org.eclipse.jetty:jetty-server:$versions.jetty"
     compile "org.eclipse.jetty:jetty-servlet:$versions.jetty"
     compile "org.eclipse.jetty:jetty-servlets:$versions.jetty"
+
+    compile "com.github.dxee:dject-core:$versions.dject"
+
+    compile "com.google.inject.extensions:guice-servlet:$versions.guice"
+
+    testCompile "io.rest-assured:rest-assured:$versions.restassured"
 }

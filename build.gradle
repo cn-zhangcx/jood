@@ -30,6 +30,7 @@ subprojects {
         snapshotRepositoryUrl = 'https://oss.sonatype.org/content/repositories/snapshots/'
     }
     ext.versions = [
+            'guice': '4.2.0',
             'dject': '1.0.0',
             'slf4j': '1.7.25',
 
@@ -38,7 +39,8 @@ subprojects {
 
             'junit': '4.12',
             'hamcrest': '1.3',
-            'mockito': '2.19.1'
+            'mockito': '2.19.1',
+            'restassured': '3.1.0'
     ]
 
 

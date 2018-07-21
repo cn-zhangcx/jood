@@ -1,7 +1,5 @@
 /.gradle/
 /.idea/
-/classes/
 **/build/
-/out/
-/sit/out/
+**/out/
 *.iml
