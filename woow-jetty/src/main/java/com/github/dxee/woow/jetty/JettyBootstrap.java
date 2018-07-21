@@ -33,8 +33,8 @@ public class JettyBootstrap implements LifecycleListener {
     private final LifecycleShutdown lifecycleShutdown;
 
     @Inject
-    public JettyBootstrap(JettyFeatures jettyFeatures, Handler serverHandler, Set<ConnectorFactory> connectors
-            , LifecycleShutdown lifecycleShutdown) {
+    public JettyBootstrap(JettyFeatures jettyFeatures, Handler serverHandler, Set<ConnectorFactory> connectors,
+                          LifecycleShutdown lifecycleShutdown) {
         this.jettyFeatures = jettyFeatures;
         this.serverHandler = serverHandler;
         this.connectors = connectors;
@@ -68,6 +68,7 @@ public class JettyBootstrap implements LifecycleListener {
             lifecycleShutdown.shutdown();
         }
     }
+
     @Override
     public void onStopped(Throwable error) {
         try {

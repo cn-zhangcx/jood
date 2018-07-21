@@ -17,8 +17,8 @@ public abstract class JettyModule extends ServletModule {
     @Override
     protected final void configureServlets() {
         bind(JettyFeatures.class);
-        Multibinder<ConnectorFactory> connectorBinder = Multibinder.newSetBinder(binder()
-                , ConnectorFactory.class);
+        Multibinder<ConnectorFactory> connectorBinder = Multibinder.newSetBinder(binder(),
+                ConnectorFactory.class);
         connectorBinder.addBinding().to(HttpConnectorFactory.class);
         bind(Handler.class).toProvider(ServletContextHandlerProvider.class);
         bind(JettyBootstrap.class).asEagerSingleton();

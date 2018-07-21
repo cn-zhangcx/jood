@@ -36,10 +36,7 @@ public class ServletContextHandlerProvider implements Provider<Handler> {
         ServletContextHandler servletContextHandler = new ServletContextHandler(ServletContextHandler.NO_SESSIONS);
         servletContextHandler.setContextPath(jettyFeatures.servletContext());
 
-        servletContextHandler.addFilter(GuiceFilter.class
-                , "/*"
-                , EnumSet.allOf(DispatcherType.class)
-        );
+        servletContextHandler.addFilter(GuiceFilter.class, "/*", EnumSet.allOf(DispatcherType.class));
 
         servletContextHandler.addServlet(DefaultServlet.class, "/");
 

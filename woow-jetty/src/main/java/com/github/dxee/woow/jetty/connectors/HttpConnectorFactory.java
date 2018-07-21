@@ -20,7 +20,7 @@ import javax.inject.Singleton;
  */
 @Singleton
 public class HttpConnectorFactory implements ConnectorFactory {
-    private final Logger LOGGER = LoggerFactory.getLogger(HttpConnectorFactory.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(HttpConnectorFactory.class);
     private final JettyFeatures jettyFeatures;
 
     @Inject

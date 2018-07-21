@@ -17,7 +17,7 @@ public class TestUtils {
         return randomInt;
     }
 
-    public static int freePort() {//获取空闲端口
+    public static int freePort() {
         ServerSocket tmp;
         for (int i = 65536; i > 5001; i--) {
             try {

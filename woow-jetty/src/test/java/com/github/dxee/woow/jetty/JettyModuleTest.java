@@ -63,7 +63,7 @@ public class JettyModuleTest {
     }
 
     @Test
-    public void ok() throws InterruptedException {
+    public void requestOk() throws InterruptedException {
         Dject.builder().withModules(new JettyModule() {
             @Override
             protected void bindServlets() {
@@ -76,29 +76,35 @@ public class JettyModuleTest {
             }
         }, new ShutdownHookModule()).build();
 
-        given().
-                port(port).
-                param("name", "World!").
-                when().
-                get("/jetty/hello").
-                then().
-                body(equalTo(HELLO + "World!"));
+        given().port(port).param("name", "World!")
+                .when().get("/jetty/hello")
+                .then().body(equalTo(HELLO + "World!"));
     }
 
     @Test
-    public void _404() throws InterruptedException {
+    public void request404() throws InterruptedException {
         Dject.builder().withModules(new JettyModule() {
             @Override
             protected void bindServlets() {
             }
         }, new ShutdownHookModule()).build();
 
-        given().
-                port(port).
-                when().
-                get("/jetty/hello").
-                then().
-                body(containsString("HTTP ERROR 404"));
+        given().port(port)
+                .when().get("/jetty/hello")
+                .then().body(containsString("HTTP ERROR 404"));
+    }
+
+    @Test
+    public void request() throws InterruptedException {
+        Dject.builder().withModules(new JettyModule() {
+            @Override
+            protected void bindServlets() {
+            }
+        }, new ShutdownHookModule()).build();
+
+        given().port(port)
+                .when().get("/jetty/")
+                .then().body(containsString("HTTP ERROR 404"));
     }
 
 }

@@ -78,12 +78,12 @@ public class JettyFeatures {
      * For HttpConfiguration
      **/
     public boolean sendXPoweredBy() {
-        return propertySource.get(JETTY_HTTPCONFIGURATION_SENDXPOWEREDBY
-                , Boolean.class, false);
+        return propertySource.get(JETTY_HTTPCONFIGURATION_SENDXPOWEREDBY,
+                Boolean.class, false);
     }
 
     public boolean sendServerVersion() {
-        return propertySource.get(JETTY_HTTPCONFIGURATION_SENDSERVERVERSION
-                , Boolean.class, false);
+        return propertySource.get(JETTY_HTTPCONFIGURATION_SENDSERVERVERSION,
+                Boolean.class, false);
     }
 }
