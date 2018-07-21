@@ -1,0 +1,5 @@
+rootProject.name = 'woow'
+
+include 'woow-core'
+include 'woow-jetty'
+
