@@ -1,10 +1,10 @@
 package com.github.dxee.woow.kafka;
 
 import com.github.dxee.woow.WoowContext;
-import com.github.dxee.woow.messaging.EventMessage;
-import com.github.dxee.woow.messaging.MessageType;
-import com.github.dxee.woow.messaging.Metadata;
-import com.github.dxee.woow.messaging.Topic;
+import com.github.dxee.woow.eventhandling.EventMessage;
+import com.github.dxee.woow.eventhandling.MessageType;
+import com.github.dxee.woow.eventhandling.Metadata;
+import com.github.dxee.woow.eventhandling.Topic;
 import com.google.common.base.Strings;
 import com.google.protobuf.Message;
 import org.apache.kafka.clients.consumer.ConsumerRecord;

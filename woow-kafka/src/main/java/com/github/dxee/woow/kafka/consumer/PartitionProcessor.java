@@ -5,10 +5,7 @@ import com.github.dxee.woow.kafka.Envelope;
 import com.github.dxee.woow.kafka.Messages;
 import com.github.dxee.woow.kafka.UnknownMessageHandlerException;
 import com.github.dxee.woow.kafka.UnknownMessageTypeException;
-import com.github.dxee.woow.messaging.EventMessage;
-import com.github.dxee.woow.messaging.MessageHandler;
-import com.github.dxee.woow.messaging.MessageType;
-import com.github.dxee.woow.messaging.TypeDictionary;
+import com.github.dxee.woow.eventhandling.*;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Message;
 import com.google.protobuf.Parser;
@@ -37,8 +34,8 @@ final class PartitionProcessor {
     private final TopicPartition partitionKey;
 
     // Injected
-    private final TypeDictionary typeDictionary;
-    private final FailedMessageProcessor failedMessageProcessor;
+    private final EventListenerMapping eventListenerMapping;
+    private final ErrorHandler errorHandler;
 
     // Lifecycle state
     private final AtomicBoolean isStopped = new AtomicBoolean(false);
@@ -50,11 +47,11 @@ final class PartitionProcessor {
 
     // Lifecycle --------------------------------------------------
 
-    PartitionProcessor(TopicPartition partitionKey, TypeDictionary typeDictionary,
-                       FailedMessageProcessor failedMessageProcessor) {
+    PartitionProcessor(TopicPartition partitionKey, EventListenerMapping eventListenerMapping,
+                       ErrorHandler errorHandler) {
         this.partitionKey = partitionKey;
-        this.typeDictionary = typeDictionary;
-        this.failedMessageProcessor = failedMessageProcessor;
+        this.eventListenerMapping = eventListenerMapping;
+        this.errorHandler = errorHandler;
 
         undeliveredMessages = new LinkedBlockingQueue<>();
 
@@ -156,7 +153,7 @@ final class PartitionProcessor {
             try {
                 MessageType type = new MessageType(envelope.getMessageType());
 
-                Parser<Message> parser = typeDictionary.parserFor(type);
+                Parser<Message> parser = eventListenerMapping.getParser(type);
                 if (parser == null) {
                     throw new UnknownMessageTypeException(type);
                 }
@@ -181,7 +178,7 @@ final class PartitionProcessor {
                 while (tryDeliverMessage) {
                     try {
                         MessageType messageType = message.getMetadata().getType();
-                        MessageHandler handler = typeDictionary.messageHandlerFor(messageType);
+                        EventListener handler = eventListenerMapping.getEventListener(messageType);
                         if (handler == null) {
                             throw new UnknownMessageHandlerException(messageType);
                         }
@@ -189,13 +186,13 @@ final class PartitionProcessor {
                         deliveryStarted(message, handler, context);
 
                         // Leave the framework here: hand over execution to service-specific handler.
-                        handler.onMessage(message, context);
+                        handler.handle(message, context);
                         deliveryFailed = false;
 
                         break;
                     } catch (Exception failure) {
                         // Strategy decides: Should we retry to deliver the failed message?
-                        tryDeliverMessage = failedMessageProcessor.onFailedMessage(message, failure);
+                        tryDeliverMessage = errorHandler.handleError(message, failure);
                         deliveryFailed(message, failure, tryDeliverMessage);
                     }
                 }
@@ -217,7 +214,7 @@ final class PartitionProcessor {
         }
 
 
-        private void deliveryStarted(EventMessage message, MessageHandler handler, WoowContext context) {
+        private void deliveryStarted(EventMessage message, EventListener handler, WoowContext context) {
             // TODO log, trace, metrics
             LOGGER.debug("deliveryStarted {}, {}, {}", message, handler.getClass().getName(), context);
         }
@@ -288,7 +285,7 @@ final class PartitionProcessor {
     }
 
     // Test access
-    TypeDictionary getTypeDictionary() {
-        return typeDictionary;
+    EventListenerMapping getTypeDictionary() {
+        return eventListenerMapping;
     }
 }

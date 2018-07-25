@@ -5,11 +5,12 @@ import com.github.dxee.woow.kafka.Messages;
 import com.github.dxee.woow.kafka.SayHelloToCmd;
 import com.github.dxee.woow.kafka.SayHelloToReply;
 import com.github.dxee.woow.kafka.consumer.DiscardFailedMessages;
-import com.github.dxee.woow.kafka.consumer.FailedMessageProcessor;
+import com.github.dxee.woow.kafka.consumer.EventListenerMapping;
+import com.github.dxee.woow.eventhandling.ErrorHandler;
 import com.github.dxee.woow.kafka.consumer.KafConsumer;
 import com.github.dxee.woow.kafka.consumer.PartitionProcessorFactory;
 import com.github.dxee.woow.kafka.embedded.KafkaCluster;
-import com.github.dxee.woow.messaging.*;
+import com.github.dxee.woow.eventhandling.*;
 import com.google.protobuf.Message;
 import com.google.protobuf.Parser;
 import org.apache.kafka.clients.CommonClientConfigs;
@@ -46,41 +47,44 @@ public class KafProducerTest {
         for (int i = 0; i < N; i++) {
             SayHelloToCmd cmd = SayHelloToCmd.newBuilder().setName(Integer.toString(i)).build();
             EventMessage request = Messages.requestFor(ping, pong, "1", cmd, new WoowContext());
-            kafProducer.send(request);
+            kafProducer.publish(request);
         }
 
         final CountDownLatch requestLatch = new CountDownLatch(N);
         final CountDownLatch responseLatch = new CountDownLatch(N);
 
-        TypeDictionary typeDictionary = new TypeDictionary();
+        EventListenerMapping eventListenerMapping = new EventListenerMapping();
 
-        typeDictionary.putHandler(MessageType.of(SayHelloToCmd.class),
-                (MessageHandler<SayHelloToCmd>) (message, context) -> {
+        eventListenerMapping.addListener(MessageType.of(SayHelloToCmd.class),
+                (EventListener<SayHelloToCmd>) (message, context) -> {
                     SayHelloToReply greeting = SayHelloToReply.newBuilder()
                             .setGreeting("Hello to " + message.getPayload().getName())
                             .build();
                     EventMessage reply = Messages.replyTo(message, greeting, context);
 
-                    kafProducer.send(reply);
+                    kafProducer.publish(reply);
                     requestLatch.countDown();
 
                 });
-        typeDictionary.putParser(MessageType.of(SayHelloToCmd.class), parser(SayHelloToCmd.class));
+        eventListenerMapping.addParser(MessageType.of(SayHelloToCmd.class), parser(SayHelloToCmd.class));
 
-        typeDictionary.putHandler(
+        eventListenerMapping.addListener(
                 MessageType.of(SayHelloToReply.class),
-                (MessageHandler<SayHelloToReply>) (message, context) -> responseLatch.countDown()
+                (EventListener<SayHelloToReply>) (message, context) -> responseLatch.countDown()
         );
-        typeDictionary.putParser(MessageType.of(SayHelloToReply.class), parser(SayHelloToReply.class));
+        eventListenerMapping.addParser(MessageType.of(SayHelloToReply.class), parser(SayHelloToReply.class));
 
 
         PartitionProcessorFactory partitionProcessorFactory = new PartitionProcessorFactory(
-                typeDictionary,
+                eventListenerMapping,
                 new DiscardFailedMessages()
         );
 
-        final KafConsumer requestConsumer = consumerForTopic(ping, typeDictionary, new DiscardFailedMessages());
-        final KafConsumer replyConsumer = consumerForTopic(pong, typeDictionary, new DiscardFailedMessages());
+        final KafConsumer requestConsumer = consumerForTopic(ping, eventListenerMapping, new DiscardFailedMessages());
+        final KafConsumer replyConsumer = consumerForTopic(pong, eventListenerMapping, new DiscardFailedMessages());
+
+        requestConsumer.start();
+        replyConsumer.start();
 
         assertTrue(requestLatch.await(60, TimeUnit.SECONDS));
 
@@ -104,12 +108,12 @@ public class KafProducerTest {
         return null;
     }
 
-    public KafConsumer consumerForTopic(Topic topic, TypeDictionary typeDictionary,
+    public KafConsumer consumerForTopic(Topic topic, EventListenerMapping eventListenerMapping,
                                         DiscardFailedMessages failedMessageStrategy) {
         String consumerGroupId = defaultConsumerGroupId(topic);
 
         return new KafConsumer(topic, consumerGroupId, defaultKafkaConfig(),
-                defaultPartitionProcessorFactory(typeDictionary, failedMessageStrategy));
+                defaultPartitionProcessorFactory(eventListenerMapping, failedMessageStrategy));
     }
 
     private String defaultConsumerGroupId(Topic topic) {
@@ -117,9 +121,9 @@ public class KafProducerTest {
         return topic.topic() + "-" + "com.sixt.service.unknown";
     }
 
-    private PartitionProcessorFactory defaultPartitionProcessorFactory(TypeDictionary typeDictionary,
-                                                                       FailedMessageProcessor failedMessageStrategy) {
-        PartitionProcessorFactory partitionProcessorFactory = new PartitionProcessorFactory(typeDictionary,
+    private PartitionProcessorFactory defaultPartitionProcessorFactory(EventListenerMapping eventListenerMapping,
+                                                                       ErrorHandler failedMessageStrategy) {
+        PartitionProcessorFactory partitionProcessorFactory = new PartitionProcessorFactory(eventListenerMapping,
                 failedMessageStrategy);
         return partitionProcessorFactory;
     }
@@ -130,7 +134,7 @@ public class KafProducerTest {
         Properties kafkaConfig = new Properties();
         kafkaConfig.put("bootstrap.servers", kafkaBootstrapServers);
 
-        // The heartbeat is send in the background by the client library itself
+        // The heartbeat is publish in the background by the client library itself
         kafkaConfig.put("heartbeat.interval.ms", "10000");
         kafkaConfig.put("session.timeout.ms", "30000");
 

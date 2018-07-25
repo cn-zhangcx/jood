@@ -1,6 +1,7 @@
 package com.github.dxee.woow.kafka.consumer;
 
-import com.github.dxee.woow.messaging.Topic;
+import com.github.dxee.woow.eventhandling.EventProcessor;
+import com.github.dxee.woow.eventhandling.Topic;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -33,7 +34,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * <p>
  * KafConsumer instances are created by the ConsumerFactory.
  */
-public class KafConsumer {
+public class KafConsumer implements EventProcessor {
     private static final Logger LOGGER = LoggerFactory.getLogger(KafConsumer.class);
 
     private static final int HANDLER_TIMEOUT_MILLIS = 60_000;
@@ -61,11 +62,14 @@ public class KafConsumer {
 
         kafkaConsumer = new KafkaConsumer<>(props);
         partitions = new AssignedPartitions(processorFactory);
+    }
 
-        // start it
+    @Override
+    public void start() {
         consumerLoopExecutor.execute(new ConsumerLoop());
     }
 
+    @Override
     public void shutdown() {
         LOGGER.debug("Shutdown requested for consumer in group {} for topic {}", consumerGroupId, topic.topic());
 

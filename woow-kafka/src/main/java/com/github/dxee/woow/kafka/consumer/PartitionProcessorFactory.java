@@ -1,18 +1,18 @@
 package com.github.dxee.woow.kafka.consumer;
 
-import com.github.dxee.woow.messaging.TypeDictionary;
+import com.github.dxee.woow.eventhandling.ErrorHandler;
 import org.apache.kafka.common.TopicPartition;
 
 public final class PartitionProcessorFactory {
-    private final TypeDictionary typeDictionary;
-    private final FailedMessageProcessor failedMessageProcessor;
+    private final EventListenerMapping eventListenerMapping;
+    private final ErrorHandler errorHandler;
 
-    public PartitionProcessorFactory(TypeDictionary typeDictionary, FailedMessageProcessor failedMessageProcessor) {
-        this.typeDictionary = typeDictionary;
-        this.failedMessageProcessor = failedMessageProcessor;
+    public PartitionProcessorFactory(EventListenerMapping eventListenerMapping, ErrorHandler errorHandler) {
+        this.eventListenerMapping = eventListenerMapping;
+        this.errorHandler = errorHandler;
     }
 
     public PartitionProcessor newProcessorFor(TopicPartition partitionKey) {
-        return new PartitionProcessor(partitionKey, typeDictionary, failedMessageProcessor);
+        return new PartitionProcessor(partitionKey, eventListenerMapping, errorHandler);
     }
 }

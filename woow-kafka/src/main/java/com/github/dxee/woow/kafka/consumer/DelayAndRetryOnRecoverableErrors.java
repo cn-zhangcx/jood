@@ -1,29 +1,30 @@
 package com.github.dxee.woow.kafka.consumer;
 
-import com.github.dxee.woow.messaging.EventMessage;
+import com.github.dxee.woow.eventhandling.ErrorHandler;
+import com.github.dxee.woow.eventhandling.EventMessage;
 
 // Thread safety: single thread use
-public class DelayAndRetryOnRecoverableErrors implements FailedMessageProcessor {
+public class DelayAndRetryOnRecoverableErrors implements ErrorHandler {
 
-    private final FailedMessageProcessor fallbackStrategy;
+    private final ErrorHandler fallbackStrategy;
     private final RetryDelayer retryStrategy;
 
     EventMessage lastFailedMessage = null;
 
-    public DelayAndRetryOnRecoverableErrors(FailedMessageProcessor fallbackStrategy, RetryDelayer retryStrategy) {
+    public DelayAndRetryOnRecoverableErrors(ErrorHandler fallbackStrategy, RetryDelayer retryStrategy) {
         this.fallbackStrategy = fallbackStrategy;
         this.retryStrategy = retryStrategy;
     }
 
     @Override
-    public boolean onFailedMessage(EventMessage failed, Throwable failureCause) {
+    public boolean handleError(EventMessage event, Throwable failureCause) {
         if (!isRecoverable(failureCause)) {
-            return fallbackStrategy.onFailedMessage(failed, failureCause);
+            return fallbackStrategy.handleError(event, failureCause);
         }
 
         // we have a new failure case
-        if (failed != lastFailedMessage) { // reference equals by intention
-            lastFailedMessage = failed;
+        if (event != lastFailedMessage) { // reference equals by intention
+            lastFailedMessage = event;
             retryStrategy.reset();
         }
 
@@ -31,7 +32,7 @@ public class DelayAndRetryOnRecoverableErrors implements FailedMessageProcessor 
         boolean shouldRetry = retryStrategy.delay();
 
         if (!shouldRetry) {
-            return fallbackStrategy.onFailedMessage(failed, failureCause);
+            return fallbackStrategy.handleError(event, failureCause);
         }
 
         return shouldRetry;

@@ -1,4 +1,4 @@
-package com.github.dxee.woow.messaging;
+package com.github.dxee.woow.eventhandling;
 
 import com.github.dxee.woow.WoowContext;
 import com.google.common.base.MoreObjects;

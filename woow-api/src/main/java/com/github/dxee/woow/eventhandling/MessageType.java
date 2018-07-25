@@ -1,4 +1,4 @@
-package com.github.dxee.woow.messaging;
+package com.github.dxee.woow.eventhandling;
 
 import com.google.common.base.MoreObjects;
 import com.google.common.base.Objects;
@@ -23,9 +23,11 @@ public final class MessageType {
         if (this == o) {
             return true;
         }
+
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
+
         MessageType that = (MessageType) o;
         return Objects.equal(typeName, that.typeName);
     }

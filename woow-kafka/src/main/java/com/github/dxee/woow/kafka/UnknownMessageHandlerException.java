@@ -1,7 +1,7 @@
 package com.github.dxee.woow.kafka;
 
 
-import com.github.dxee.woow.messaging.MessageType;
+import com.github.dxee.woow.eventhandling.MessageType;
 
 public class UnknownMessageHandlerException extends Exception {
     public UnknownMessageHandlerException(MessageType type) {

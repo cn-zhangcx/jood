@@ -2,7 +2,8 @@ package com.github.dxee.woow.kafka.producer;
 
 import com.github.dxee.woow.kafka.Envelope;
 import com.github.dxee.woow.kafka.Messages;
-import com.github.dxee.woow.messaging.EventMessage;
+import com.github.dxee.woow.eventhandling.EventBus;
+import com.github.dxee.woow.eventhandling.EventMessage;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -16,7 +17,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-public class KafProducer {
+public class KafProducer implements EventBus {
     private static final Logger LOGGER = LoggerFactory.getLogger(KafProducer.class);
 
     private final KafkaProducer<String, byte[]> kafkaProducer;
@@ -40,10 +41,10 @@ public class KafProducer {
         LOGGER.info("Shut down producer.");
     }
 
-    public void send(EventMessage message) {
-        String destinationTopic = message.getMetadata().getTopic().topic();
-        String partitioningKey = message.getMetadata().getPartitioningKey();
-        Envelope envelope = Messages.toKafka(message);
+    public void publish(EventMessage event) {
+        String destinationTopic = event.getMetadata().getTopic().topic();
+        String partitioningKey = event.getMetadata().getPartitioningKey();
+        Envelope envelope = Messages.toKafka(event);
 
         ProducerRecord<String, byte[]> record = new ProducerRecord<>(destinationTopic, partitioningKey,
                 envelope.toByteArray());
@@ -52,11 +53,11 @@ public class KafProducer {
             Future future = kafkaProducer.send(record);
             future.get();
         } catch (InterruptedException ex) {
-            LOGGER.warn("KafProducer interrupted while waiting on future.get() of kafkaProducer.send(record). "
-                    + "It is unknown if the message has been sent.", ex);
+            LOGGER.warn("KafProducer interrupted while waiting on future.get() of kafkaProducer.publish(record). "
+                    + "It is unknown if the event has been sent.", ex);
         } catch (ExecutionException ex) {
             Throwable cause = ex.getCause();
-            LOGGER.warn("Error sending message", cause);
+            LOGGER.warn("Error sending event", cause);
             // Examples for Exceptions seen during testing:
             // org.apache.kafkaProducer.common.errors.NetworkException:
             // The server disconnected before a response was received.
@@ -69,7 +70,7 @@ public class KafProducer {
 
             // The error handling strategy here is to not retry here but pass to the caller:
             // If for example the producer is used in a synchronous context, it probably does not make sense to retry.
-            // However, in an asynchronous context (e.g. in a MessageHandler) it would be wise to retry.
+            // However, in an asynchronous context (e.g. in a EventListener) it would be wise to retry.
             if (cause instanceof RuntimeException) {
                 throw (RuntimeException) cause;
             } else {
