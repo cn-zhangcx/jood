@@ -1,0 +1,34 @@
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.google.protobuf:protobuf-gradle-plugin:0.8.6'
+    }
+}
+
+apply plugin: 'idea'
+apply plugin: 'com.google.protobuf'
+
+dependencies {
+    compile project(':woow-api')
+    //Protobuf
+    compile "com.google.protobuf:protobuf-java:$versions.protobuf"
+    compile "org.apache.kafka:kafka-clients:$versions.kafka"
+
+
+    testCompile "org.apache.kafka:kafka_2.12:$versions.kafka"
+}
+
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:$versions.protobuf"
+    }
+}
+
+idea {
+    module {
+        sourceDirs += file("$protobuf.generatedFilesBaseDir/main/java");
+        sourceDirs += file("$protobuf.generatedFilesBaseDir/test/java");
+    }
+}

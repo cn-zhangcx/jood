@@ -1,0 +1,6 @@
+dependencies {
+    compile "com.github.dxee:dject-core:$versions.dject"
+
+    //Protobuf
+    compile "com.google.protobuf:protobuf-java:$versions.protobuf"
+}

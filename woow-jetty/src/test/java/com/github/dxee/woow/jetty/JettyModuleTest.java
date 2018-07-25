@@ -5,7 +5,6 @@ import com.github.dxee.dject.ext.ShutdownHookModule;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import org.eclipse.jetty.util.Jetty;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -13,7 +12,6 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-
 import java.io.IOException;
 
 import static io.restassured.RestAssured.given;
@@ -64,7 +62,7 @@ public class JettyModuleTest {
 
     @Test
     public void requestOk() throws InterruptedException {
-        Dject.builder().withModules(new JettyModule() {
+        Dject.newBuilder().withModules(new JettyModule() {
             @Override
             protected void bindServlets() {
                 serve("/hello").with(HelloServlet.class);
@@ -83,7 +81,7 @@ public class JettyModuleTest {
 
     @Test
     public void request404() throws InterruptedException {
-        Dject.builder().withModules(new JettyModule() {
+        Dject.newBuilder().withModules(new JettyModule() {
             @Override
             protected void bindServlets() {
             }
@@ -96,7 +94,7 @@ public class JettyModuleTest {
 
     @Test
     public void request() throws InterruptedException {
-        Dject.builder().withModules(new JettyModule() {
+        Dject.newBuilder().withModules(new JettyModule() {
             @Override
             protected void bindServlets() {
             }
