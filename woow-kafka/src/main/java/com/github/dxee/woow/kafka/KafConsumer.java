@@ -1,7 +1,9 @@
-package com.github.dxee.woow.kafka.consumer;
+package com.github.dxee.woow.kafka;
 
+import com.github.dxee.dject.lifecycle.LifecycleListener;
 import com.github.dxee.woow.eventhandling.EventProcessor;
-import com.github.dxee.woow.eventhandling.Topic;
+import com.github.dxee.woow.kafka.consumer.AssignedPartitions;
+import com.github.dxee.woow.kafka.consumer.PartitionProcessor;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -19,9 +21,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * KafConsumer instances are Kafka clients that fetch records of (one or multiple partitions of) a topic.
+ * KafConsumer instances are Kafka clients that fetch records of (one or multiple assignedPartitions of) a topic.
  * <p>
- * Consumers also handle the flow control (pausing/resuming busy partitions) as well as changes in the
+ * Consumers also handle the flow control (pausing/resuming busy assignedPartitions) as well as changes in the
  * partition assignment.
  * <p>
  * The topic a consumer subscribes to must have been created before. When starting a consumer, it will
@@ -33,8 +35,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * A PartitionProcessor currently is single-threaded to keep the ordering guarantee on a partition.
  * <p>
  * KafConsumer instances are created by the ConsumerFactory.
+ *
+ * @author bing.fan
+ * 2018-07-06 18:17
  */
-public class KafConsumer implements EventProcessor {
+public class KafConsumer implements EventProcessor, LifecycleListener {
     private static final Logger LOGGER = LoggerFactory.getLogger(KafConsumer.class);
 
     private static final int HANDLER_TIMEOUT_MILLIS = 60_000;
@@ -42,26 +47,26 @@ public class KafConsumer implements EventProcessor {
     // every six hours
     private static final long COMMIT_REFRESH_INTERVAL_MILLIS = 6 * 60 * 60 * 1000;
 
-    private final Topic topic;
+    private final String topic;
     private final String consumerGroupId;
     private final KafkaConsumer<String, byte[]> kafkaConsumer;
-    private final AssignedPartitions partitions;
+    private final AssignedPartitions assignedPartitions;
     private final ExecutorService consumerLoopExecutor = Executors.newSingleThreadExecutor();
     private final AtomicBoolean isStopped = new AtomicBoolean(false);
 
     // Build by ConsumerFactory
-    public KafConsumer(Topic topic, String consumerGroupId, Properties props,
-                       PartitionProcessorFactory processorFactory) {
+    public KafConsumer(String topic, String consumerGroupId, Properties consumerProperties,
+                       AssignedPartitions assignedPartitions) {
         this.topic = topic;
         this.consumerGroupId = consumerGroupId;
 
         // Mandatory settings, not changeable
-        props.put("group.id", consumerGroupId);
-        props.put("key.deserializer", StringDeserializer.class.getName());
-        props.put("value.deserializer", ByteArrayDeserializer.class.getName());
+        consumerProperties.put("group.id", consumerGroupId);
+        consumerProperties.put("key.deserializer", StringDeserializer.class.getName());
+        consumerProperties.put("value.deserializer", ByteArrayDeserializer.class.getName());
 
-        kafkaConsumer = new KafkaConsumer<>(props);
-        partitions = new AssignedPartitions(processorFactory);
+        kafkaConsumer = new KafkaConsumer<>(consumerProperties);
+        this.assignedPartitions = assignedPartitions;
     }
 
     @Override
@@ -71,7 +76,7 @@ public class KafConsumer implements EventProcessor {
 
     @Override
     public void shutdown() {
-        LOGGER.debug("Shutdown requested for consumer in group {} for topic {}", consumerGroupId, topic.topic());
+        LOGGER.debug("Shutdown requested for consumer in group {} for topic {}", consumerGroupId, topic);
 
         isStopped.set(true);
         consumerLoopExecutor.shutdown();
@@ -84,14 +89,24 @@ public class KafConsumer implements EventProcessor {
             LOGGER.error("consumer loop executor stop exception catched within {} seconds", timeout, e);
         }
 
-        Set<TopicPartition> allPartitions = partitions.allPartitions();
-        partitions.stopProcessing(allPartitions);
-        partitions.waitForHandlersToComplete(allPartitions, HANDLER_TIMEOUT_MILLIS);
-        kafkaConsumer.commitSync(partitions.offsetsToBeCommitted());
+        Set<TopicPartition> allPartitions = assignedPartitions.allPartitions();
+        assignedPartitions.stopProcessing(allPartitions);
+        assignedPartitions.waitForEventListenersToComplete(allPartitions, HANDLER_TIMEOUT_MILLIS);
+        kafkaConsumer.commitSync(assignedPartitions.offsetsToBeCommitted());
 
         kafkaConsumer.close();
 
-        LOGGER.info("KafConsumer in group {} for topic {} was shut down.", consumerGroupId, topic.topic());
+        LOGGER.info("KafConsumer in group {} for topic {} was shut down.", consumerGroupId, topic);
+    }
+
+    @Override
+    public void onStarted() {
+        start();
+    }
+
+    @Override
+    public void onStopped(Throwable error) {
+        shutdown();
     }
 
     class ConsumerLoop implements Runnable {
@@ -101,14 +116,11 @@ public class KafConsumer implements EventProcessor {
         @Override
         public void run() {
             try {
-                List<String> topics = new ArrayList<>();
-                topics.add(topic.topic());
-
-                kafkaConsumer.subscribe(topics, new PartitionAssignmentChange());
-                LOGGER.info("KafConsumer in group {} subscribed to topic {}", consumerGroupId, topic.topic());
+                kafkaConsumer.subscribe(Arrays.asList(topic), new PartitionAssignmentChange());
+                LOGGER.info("KafConsumer in group {} subscribed to topic {}", consumerGroupId, topic);
             } catch (Exception unexpected) {
                 LOGGER.error("Dead consumer in group {}: Cannot subscribe to topic {}",
-                        consumerGroupId, topic.topic(), unexpected);
+                        consumerGroupId, topic, unexpected);
                 return;
             }
 
@@ -120,29 +132,29 @@ public class KafConsumer implements EventProcessor {
                         // callbacks and may take substantially more time to return.
                         ConsumerRecords<String, byte[]> records = kafkaConsumer.poll(POLL_INTERVAL_MILLIS);
 
-                        partitions.enqueue(records);
-                        kafkaConsumer.commitSync(partitions.offsetsToBeCommitted());
+                        assignedPartitions.enqueue(records);
+                        kafkaConsumer.commitSync(assignedPartitions.offsetsToBeCommitted());
 
                         checkIfRefreshCommitRequired();
 
-                        kafkaConsumer.pause(partitions.partitionsToBePaused());
-                        kafkaConsumer.resume(partitions.partitionsToBeResumed());
+                        kafkaConsumer.pause(assignedPartitions.partitionsToBePaused());
+                        kafkaConsumer.resume(assignedPartitions.partitionsToBeResumed());
 
 
                     } catch (Exception kafkaException) {
                         // Example for an exception seen in testing:
                         // CommitFailedException: Commit cannot be completed since the group has already rebalanced and
-                        // assigned the partitions to another member.
+                        // assigned the assignedPartitions to another member.
 
                         // Error handling strategy: log the exception and carry on.
                         // Do not kill the consumer as nobody is there to resurrect a new one.
                         LOGGER.warn("Received exception in ConsumerLoop of KafConsumer (group=" + consumerGroupId
-                                + " ,topic=" + topic.topic() + "). KafConsumer continues.", kafkaException);
+                                + " ,topic=" + topic + "). KafConsumer continues.", kafkaException);
                     }
                 }
             } catch (Throwable unexpectedError) {
                 LOGGER.error("Unexpected exception in ConsumerLoop of KafConsumer (group=" + consumerGroupId
-                        + " ,topic=" + topic.topic() + "). KafConsumer now dead.", unexpectedError);
+                        + " ,topic=" + topic + "). KafConsumer now dead.", unexpectedError);
 
                 // Try to close the connection to Kafka
                 kafkaConsumer.close();
@@ -168,7 +180,7 @@ public class KafConsumer implements EventProcessor {
             if (nextCommitRefreshRequiredTimestamp < now) {
                 nextCommitRefreshRequiredTimestamp = now + COMMIT_REFRESH_INTERVAL_MILLIS;
 
-                for (PartitionProcessor processor : partitions.allProcessors()) {
+                for (PartitionProcessor processor : assignedPartitions.allProcessors()) {
                     TopicPartition assignedPartition = processor.getAssignedPartition();
                     long lastCommittedOffset = processor.getLastCommittedOffset();
 
@@ -192,8 +204,6 @@ public class KafConsumer implements EventProcessor {
 
                 LOGGER.info("Refreshing last committed offset {}", commitOffsets);
             }
-
-
         }
 
     }
@@ -207,8 +217,8 @@ public class KafConsumer implements EventProcessor {
         // {@link #onPartitionsAssigned(Collection) onPartitionsAssigned}.
 
         // Observations from the tests:
-        // 1. When Kafka rebalances partitions, all currently assigned partitions are revoked and then the remaining
-        // partitions are newly assigned.
+        // 1. When Kafka rebalances assignedPartitions, all currently assigned assignedPartitions are revoked and
+        // then the remaining assignedPartitions are newly assigned.
         // 2. There seems to be a race condition when Kafka is starting up in parallel
         // (e.g. service integration tests): an empty partition set is assigned and
         // we do not receive any messages.
@@ -217,18 +227,18 @@ public class KafConsumer implements EventProcessor {
         public void onPartitionsRevoked(Collection<TopicPartition> revokedPartitions) {
             LOGGER.debug("ConsumerRebalanceListener.onPartitionsRevoked on {}", revokedPartitions);
 
-            partitions.stopProcessing(revokedPartitions);
-            partitions.waitForHandlersToComplete(revokedPartitions, HANDLER_TIMEOUT_MILLIS);
+            assignedPartitions.stopProcessing(revokedPartitions);
+            assignedPartitions.waitForEventListenersToComplete(revokedPartitions, HANDLER_TIMEOUT_MILLIS);
 
-            kafkaConsumer.commitSync(partitions.offsetsToBeCommitted());
+            kafkaConsumer.commitSync(assignedPartitions.offsetsToBeCommitted());
 
-            partitions.removePartitions(revokedPartitions);
+            assignedPartitions.removePartitions(revokedPartitions);
         }
 
         @Override
         public void onPartitionsAssigned(Collection<TopicPartition> assignedPartitions) {
             LOGGER.debug("ConsumerRebalanceListener.onPartitionsAssigned on {}", assignedPartitions);
-            partitions.assignNewPartitions(assignedPartitions);
+            KafConsumer.this.assignedPartitions.assignNewPartitions(assignedPartitions);
         }
     }
 }

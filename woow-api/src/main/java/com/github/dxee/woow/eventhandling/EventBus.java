@@ -11,8 +11,7 @@ public interface EventBus {
     /**
      * Method Comment Here
      *
-     * @param event The event to publish
-     * @return
+     * @param eventMessage The EventMessage to publish
      */
-    void publish(EventMessage event);
+    void publish(EventMessage eventMessage);
 }

@@ -11,12 +11,11 @@ import org.slf4j.LoggerFactory;
  * It logs topic and offset of the message, so a out-of-bounds mechanism can process / re-try any failed messages.
  */
 public class DiscardFailedMessages implements ErrorHandler {
-    private static final Logger logger = LoggerFactory.getLogger(DiscardFailedMessages.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(DiscardFailedMessages.class);
 
     @Override
-    public boolean handleError(EventMessage event, Throwable failureCause) {
-        logger.warn("Discarded failing message.", failureCause);
-
+    public boolean handleError(EventMessage eventMessage, Throwable failureCause) {
+        LOGGER.warn("Discarded failing message.", failureCause);
         return false;
     }
 }

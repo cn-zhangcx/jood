@@ -3,6 +3,12 @@ package com.github.dxee.woow.eventhandling;
 import com.google.common.base.MoreObjects;
 import com.google.protobuf.Message;
 
+/**
+ * Event message
+ *
+ * @author bing.fan
+ * 2018-07-05 17:29
+ */
 public final class EventMessage<T extends Message> {
     private final T payload;
     private final Metadata metadata;

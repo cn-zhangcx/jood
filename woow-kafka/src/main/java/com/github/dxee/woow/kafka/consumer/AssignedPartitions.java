@@ -1,5 +1,6 @@
 package com.github.dxee.woow.kafka.consumer;
 
+import com.github.dxee.woow.eventhandling.ErrorHandler;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
@@ -18,37 +19,42 @@ import java.util.*;
  * consumers.
  * <p>
  * Thread safety policy: single-thread use by KafConsumer
+ *
+ * @author bing.fan
+ * 2018-07-06 18:09
  */
-final class AssignedPartitions {
+public final class AssignedPartitions {
     private static final Logger LOGGER = LoggerFactory.getLogger(AssignedPartitions.class);
 
-    private final PartitionProcessorFactory processorFactory;
     private final Map<TopicPartition, PartitionProcessor> processors = new HashMap<>();
+    private final EventListeners eventListeners;
+    private final ErrorHandler errorHandler;
 
-    AssignedPartitions(PartitionProcessorFactory processorFactory) {
-        this.processorFactory = processorFactory;
+    public AssignedPartitions(EventListeners eventListeners, ErrorHandler errorHandler) {
+        this.eventListeners = eventListeners;
+        this.errorHandler = errorHandler;
     }
 
-    Set<TopicPartition> allPartitions() {
+    public Set<TopicPartition> allPartitions() {
         Set<TopicPartition> assignedPartitions = new HashSet<>();
         processors.forEach((key, partition) -> assignedPartitions.add(key));
         return assignedPartitions;
     }
 
-    void assignNewPartitions(Collection<TopicPartition> assignedPartitions) {
+    public void assignNewPartitions(Collection<TopicPartition> assignedPartitions) {
         assignedPartitions.forEach((key) -> assignNewPartition(key));
     }
 
-    PartitionProcessor assignNewPartition(TopicPartition partitionKey) {
+    private PartitionProcessor assignNewPartition(TopicPartition partitionKey) {
         LOGGER.debug("Assigning new PartitionProcessor for partition {}", partitionKey);
 
-        PartitionProcessor proccessor = processorFactory.newProcessorFor(partitionKey);
+        PartitionProcessor proccessor = new PartitionProcessor(partitionKey, eventListeners, errorHandler);
         processors.put(partitionKey, proccessor);
 
         return proccessor;
     }
 
-    void enqueue(ConsumerRecords<String, byte[]> records) {
+    public void enqueue(ConsumerRecords<String, byte[]> records) {
         records.forEach((record) -> {
             TopicPartition partitionKey = new TopicPartition(record.topic(), record.partition());
 
@@ -61,7 +67,7 @@ final class AssignedPartitions {
         });
     }
 
-    Map<TopicPartition, OffsetAndMetadata> offsetsToBeCommitted() {
+    public Map<TopicPartition, OffsetAndMetadata> offsetsToBeCommitted() {
         Map<TopicPartition, OffsetAndMetadata> commitOffsets = new HashMap<>();
 
         processors.forEach((key, processor) -> {
@@ -73,7 +79,7 @@ final class AssignedPartitions {
         return commitOffsets;
     }
 
-    Collection<TopicPartition> partitionsToBePaused() {
+    public Collection<TopicPartition> partitionsToBePaused() {
         List<TopicPartition> pausedPartitions = new ArrayList<>();
 
         processors.forEach((key, processor) -> {
@@ -85,7 +91,7 @@ final class AssignedPartitions {
         return pausedPartitions;
     }
 
-    Collection<TopicPartition> partitionsToBeResumed() {
+    public Collection<TopicPartition> partitionsToBeResumed() {
         List<TopicPartition> resumeablePartitions = new ArrayList<>();
 
         processors.forEach((key, processor) -> {
@@ -97,7 +103,7 @@ final class AssignedPartitions {
         return resumeablePartitions;
     }
 
-    void stopProcessing(Collection<TopicPartition> partitions) {
+    public void stopProcessing(Collection<TopicPartition> partitions) {
         partitions.forEach((key) -> {
             PartitionProcessor processor = processors.get(key);
 
@@ -110,21 +116,21 @@ final class AssignedPartitions {
         });
     }
 
-    void waitForHandlersToComplete(Collection<TopicPartition> partitions, long timeoutMillis) {
+    public void waitForEventListenersToComplete(Collection<TopicPartition> partitions, long timeoutMillis) {
         partitions.forEach((key) -> {
             PartitionProcessor processor = processors.get(key);
 
             if (processor == null) {
-                LOGGER.warn("Ignored operation: trying to waitForHandlersToTerminate on a "
+                LOGGER.warn("Ignored operation: trying to waitForEventListenersToTerminate on a "
                         + "non-existing processor for partition {}", key);
                 return;
             }
 
-            processor.waitForHandlersToTerminate(timeoutMillis);
+            processor.waitForEventListenersToTerminate(timeoutMillis);
         });
     }
 
-    void removePartitions(Collection<TopicPartition> revokedPartitions) {
+    public void removePartitions(Collection<TopicPartition> revokedPartitions) {
         revokedPartitions.forEach((key) -> {
             PartitionProcessor processor = processors.get(key);
 
@@ -141,7 +147,7 @@ final class AssignedPartitions {
         });
     }
 
-    Collection<PartitionProcessor> allProcessors() {
+    public Collection<PartitionProcessor> allProcessors() {
         Collection<PartitionProcessor> allProcessors = new ArrayList<>();
 
         processors.forEach((key, processor) -> {

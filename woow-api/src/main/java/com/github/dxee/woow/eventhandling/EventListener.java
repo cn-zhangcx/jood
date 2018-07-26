@@ -18,9 +18,9 @@ public interface EventListener<T extends Message> {
      * i.e. event may be delivered multiple times (and potentially out of order).
      * Thus, event listeners need to handle duplicate messages gracefully / be idempotent.
      *
-     * @param event
+     * @param eventMessage
      * @param context
      */
-    void handle(EventMessage<T> event, WoowContext context);
+    void handle(EventMessage<T> eventMessage, WoowContext context);
 
 }

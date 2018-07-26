@@ -2,52 +2,59 @@ package com.github.dxee.woow.kafka;
 
 import com.github.dxee.woow.WoowContext;
 import com.github.dxee.woow.eventhandling.EventMessage;
-import com.github.dxee.woow.eventhandling.MessageType;
 import com.github.dxee.woow.eventhandling.Metadata;
-import com.github.dxee.woow.eventhandling.Topic;
 import com.google.common.base.Strings;
 import com.google.protobuf.Message;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 import java.util.UUID;
 
-public final class Messages {
-    private Messages() {
+/**
+ * Message translate
+ *
+ * @author bing.fan
+ * 2018-07-06 18:15
+ */
+public final class EventMessages {
+    private EventMessages() {
         // Prevent instantiation.
     }
 
-    public static EventMessage<? extends Message> oneWayMessage(Topic target, String partitionKey,
+    public static EventMessage<? extends Message> oneWayMessage(String target, String partitionKey,
                                                                 Message protoPayloadMessage, WoowContext context) {
         boolean wasReceived = false;
 
         String messageId = UUID.randomUUID().toString();
         String correlationId = context.getCorrelationId();
 
-        Topic replyTo = null; // not required
-        String requestCorrelationId = ""; // not required
+        // not required
+        String replyTo = null;
+        // not required
+        String requestCorrelationId = "";
 
-        MessageType type = MessageType.of(protoPayloadMessage);
+        String type = TypeName.of(protoPayloadMessage);
 
         Metadata meta = new Metadata(wasReceived, target, partitionKey, -1, -1, messageId,
                 correlationId, requestCorrelationId, replyTo, type);
         return new EventMessage<>(protoPayloadMessage, meta);
     }
 
-    public static EventMessage<? extends Message> requestFor(Topic target, Topic replyTo, String partitionKey,
+    public static EventMessage<? extends Message> requestFor(String target, String replyTo, String partitionKey,
                                                              Message protoPayloadMessage, WoowContext context) {
         boolean wasReceived = false;
 
         String messageId = UUID.randomUUID().toString();
         String correlationId = context.getCorrelationId();
 
-        MessageType type = MessageType.of(protoPayloadMessage);
+        String type = TypeName.of(protoPayloadMessage);
 
         // Use default inbox for service.
         if (replyTo == null) {
             throw new IllegalArgumentException("replyTo required");
         }
 
-        String requestCorrelationId = ""; // not required
+        // not required
+        String requestCorrelationId = "";
 
         Metadata meta = new Metadata(wasReceived, target, partitionKey, -1, -1, messageId,
                 correlationId, requestCorrelationId, replyTo, type);
@@ -61,16 +68,18 @@ public final class Messages {
         boolean wasReceived = false;
 
         // By default, return to sender topic using same partitioning scheme.
-        Topic target = originalRequest.getMetadata().getReplyTo();
+        String target = originalRequest.getMetadata().getReplyTo();
         String partitionKey = originalRequest.getMetadata().getPartitioningKey();
 
         String messageId = UUID.randomUUID().toString();
         String correlationId = context.getCorrelationId();
 
         String requestCorrelationId = originalRequest.getMetadata().getMessageId();
-        Topic replyTo = null; // not required
 
-        MessageType type = MessageType.of(protoPayloadMessage);
+        // not required
+        String replyTo = null;
+
+        String type = TypeName.of(protoPayloadMessage);
 
         Metadata meta = new Metadata(wasReceived, target, partitionKey, -1, -1, messageId,
                 correlationId, requestCorrelationId, replyTo, type);
@@ -82,7 +91,7 @@ public final class Messages {
                                                             ConsumerRecord<String, byte[]> record) {
         boolean wasReceived = true;
 
-        Topic topic = new Topic(record.topic());
+        String topic = record.topic();
         String partitioningKey = record.key();
         int partitionId = record.partition();
         long offset = record.offset();
@@ -90,10 +99,10 @@ public final class Messages {
         String messageId = envelope.getMessageId();
         String correlationId = envelope.getCorrelationId();
 
-        MessageType type = MessageType.of(protoMessage);
+        String type = TypeName.of(protoMessage);
 
         String requestCorrelationId = envelope.getRequestCorrelationId();
-        Topic replyTo = new Topic(envelope.getReplyTo());
+        String replyTo = envelope.getReplyTo();
 
         Metadata meta = new Metadata(wasReceived, topic, partitioningKey, partitionId, offset, messageId,
                 correlationId, requestCorrelationId, replyTo, type);
@@ -114,14 +123,14 @@ public final class Messages {
 
         // Message exchange pattern headers
         if (meta.getReplyTo() != null) {
-            envelope.setReplyTo(meta.getReplyTo().topic());
+            envelope.setReplyTo(meta.getReplyTo());
         }
         if (!Strings.isNullOrEmpty(meta.getRequestCorrelationId())) {
             envelope.setRequestCorrelationId(meta.getRequestCorrelationId());
         }
 
         // Payload (mandatory fields!)
-        envelope.setMessageType(meta.getType().getTypeName());
+        envelope.setTypeName(meta.getTypeName());
         // Serialize the proto payload to bytes
         envelope.setInnerMessage(message.getPayload().toByteString());
 

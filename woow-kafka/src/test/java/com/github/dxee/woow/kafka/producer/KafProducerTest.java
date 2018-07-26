@@ -1,14 +1,10 @@
 package com.github.dxee.woow.kafka.producer;
 
 import com.github.dxee.woow.WoowContext;
-import com.github.dxee.woow.kafka.Messages;
-import com.github.dxee.woow.kafka.SayHelloToCmd;
-import com.github.dxee.woow.kafka.SayHelloToReply;
+import com.github.dxee.woow.kafka.*;
+import com.github.dxee.woow.kafka.consumer.AssignedPartitions;
 import com.github.dxee.woow.kafka.consumer.DiscardFailedMessages;
-import com.github.dxee.woow.kafka.consumer.EventListenerMapping;
-import com.github.dxee.woow.eventhandling.ErrorHandler;
-import com.github.dxee.woow.kafka.consumer.KafConsumer;
-import com.github.dxee.woow.kafka.consumer.PartitionProcessorFactory;
+import com.github.dxee.woow.kafka.consumer.EventListeners;
 import com.github.dxee.woow.kafka.embedded.KafkaCluster;
 import com.github.dxee.woow.eventhandling.*;
 import com.google.protobuf.Message;
@@ -23,12 +19,21 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertTrue;
 
+/**
+ * KafProducerTest
+ *
+ * @author bing.fan
+ * 2018-07-11 23:46
+ */
 public class KafProducerTest {
+
     @Test
     public void simpleProducerConsumer() throws InterruptedException {
+        int zkPort = TestUtils.getAvailablePort();
+        int kafkaBrokerPort = TestUtils.getAvailablePort(zkPort);
         KafkaCluster cluster = KafkaCluster.newBuilder()
-                .withZookeeper("127.0.0.1", 2181)
-                .withBroker(1, "127.0.0.1", 9092)
+                .withZookeeper("127.0.0.1", zkPort)
+                .withBroker(1, "127.0.0.1", kafkaBrokerPort)
                 .build();
 
         cluster.start();
@@ -36,52 +41,47 @@ public class KafProducerTest {
         cluster.createTopic("pong", 1);
 
         Properties properties = new Properties();
-        properties.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, "127.0.0.1:9092");
+        properties.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, "127.0.0.1:" + kafkaBrokerPort);
         KafProducer kafProducer = new KafProducer(properties);
 
-        Topic ping = new Topic("ping");
-        Topic pong = new Topic("pong");
+        String ping = "ping";
+        String pong = "pong";
 
         final int N = 10;
 
         for (int i = 0; i < N; i++) {
             SayHelloToCmd cmd = SayHelloToCmd.newBuilder().setName(Integer.toString(i)).build();
-            EventMessage request = Messages.requestFor(ping, pong, "1", cmd, new WoowContext());
+            EventMessage request = EventMessages.requestFor(ping, pong, "1", cmd, new WoowContext());
             kafProducer.publish(request);
         }
 
         final CountDownLatch requestLatch = new CountDownLatch(N);
         final CountDownLatch responseLatch = new CountDownLatch(N);
 
-        EventListenerMapping eventListenerMapping = new EventListenerMapping();
+        EventListeners eventListeners = new EventListeners();
 
-        eventListenerMapping.addListener(MessageType.of(SayHelloToCmd.class),
+        eventListeners.addListener(SayHelloToCmd.class.getTypeName(),
                 (EventListener<SayHelloToCmd>) (message, context) -> {
                     SayHelloToReply greeting = SayHelloToReply.newBuilder()
                             .setGreeting("Hello to " + message.getPayload().getName())
                             .build();
-                    EventMessage reply = Messages.replyTo(message, greeting, context);
+                    EventMessage reply = EventMessages.replyTo(message, greeting, context);
 
                     kafProducer.publish(reply);
                     requestLatch.countDown();
 
                 });
-        eventListenerMapping.addParser(MessageType.of(SayHelloToCmd.class), parser(SayHelloToCmd.class));
+        eventListeners.addParser(SayHelloToCmd.class.getTypeName(), parser(SayHelloToCmd.class));
 
-        eventListenerMapping.addListener(
-                MessageType.of(SayHelloToReply.class),
+        eventListeners.addListener(SayHelloToReply.class.getTypeName(),
                 (EventListener<SayHelloToReply>) (message, context) -> responseLatch.countDown()
         );
-        eventListenerMapping.addParser(MessageType.of(SayHelloToReply.class), parser(SayHelloToReply.class));
+        eventListeners.addParser(SayHelloToReply.class.getTypeName(), parser(SayHelloToReply.class));
 
-
-        PartitionProcessorFactory partitionProcessorFactory = new PartitionProcessorFactory(
-                eventListenerMapping,
-                new DiscardFailedMessages()
-        );
-
-        final KafConsumer requestConsumer = consumerForTopic(ping, eventListenerMapping, new DiscardFailedMessages());
-        final KafConsumer replyConsumer = consumerForTopic(pong, eventListenerMapping, new DiscardFailedMessages());
+        final KafConsumer requestConsumer = consumerForTopic(ping, kafkaBrokerPort,
+                eventListeners, new DiscardFailedMessages());
+        final KafConsumer replyConsumer = consumerForTopic(pong, kafkaBrokerPort,
+                eventListeners, new DiscardFailedMessages());
 
         requestConsumer.start();
         replyConsumer.start();
@@ -108,28 +108,21 @@ public class KafProducerTest {
         return null;
     }
 
-    public KafConsumer consumerForTopic(Topic topic, EventListenerMapping eventListenerMapping,
+    public KafConsumer consumerForTopic(String topic, int port, EventListeners eventListeners,
                                         DiscardFailedMessages failedMessageStrategy) {
         String consumerGroupId = defaultConsumerGroupId(topic);
 
-        return new KafConsumer(topic, consumerGroupId, defaultKafkaConfig(),
-                defaultPartitionProcessorFactory(eventListenerMapping, failedMessageStrategy));
+        return new KafConsumer(topic, consumerGroupId, defaultKafkaConfig(port),
+                new AssignedPartitions(eventListeners, failedMessageStrategy));
     }
 
-    private String defaultConsumerGroupId(Topic topic) {
+    private String defaultConsumerGroupId(String topic) {
         // default consumer group id consists of topic and service name
-        return topic.topic() + "-" + "com.sixt.service.unknown";
+        return topic + "-" + "test";
     }
 
-    private PartitionProcessorFactory defaultPartitionProcessorFactory(EventListenerMapping eventListenerMapping,
-                                                                       ErrorHandler failedMessageStrategy) {
-        PartitionProcessorFactory partitionProcessorFactory = new PartitionProcessorFactory(eventListenerMapping,
-                failedMessageStrategy);
-        return partitionProcessorFactory;
-    }
-
-    private Properties defaultKafkaConfig() {
-        String kafkaBootstrapServers = "127.0.0.1:9092";
+    private Properties defaultKafkaConfig(int port) {
+        String kafkaBootstrapServers = "127.0.0.1:" + port;
 
         Properties kafkaConfig = new Properties();
         kafkaConfig.put("bootstrap.servers", kafkaBootstrapServers);

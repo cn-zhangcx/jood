@@ -2,8 +2,7 @@ package com.github.dxee.woow.kafka.consumer;
 
 import com.github.dxee.woow.WoowContext;
 import com.github.dxee.woow.kafka.Envelope;
-import com.github.dxee.woow.kafka.Messages;
-import com.github.dxee.woow.kafka.UnknownMessageHandlerException;
+import com.github.dxee.woow.kafka.EventMessages;
 import com.github.dxee.woow.kafka.UnknownMessageTypeException;
 import com.github.dxee.woow.eventhandling.*;
 import com.google.protobuf.InvalidProtocolBufferException;
@@ -21,7 +20,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
-final class PartitionProcessor {
+public final class PartitionProcessor {
     private static final Logger LOGGER = LoggerFactory.getLogger(PartitionProcessor.class);
 
     static final int MAX_MESSAGES_IN_FLIGHT = 100;
@@ -34,7 +33,7 @@ final class PartitionProcessor {
     private final TopicPartition partitionKey;
 
     // Injected
-    private final EventListenerMapping eventListenerMapping;
+    private final EventListeners eventListeners;
     private final ErrorHandler errorHandler;
 
     // Lifecycle state
@@ -47,10 +46,10 @@ final class PartitionProcessor {
 
     // Lifecycle --------------------------------------------------
 
-    PartitionProcessor(TopicPartition partitionKey, EventListenerMapping eventListenerMapping,
+    PartitionProcessor(TopicPartition partitionKey, EventListeners eventListeners,
                        ErrorHandler errorHandler) {
         this.partitionKey = partitionKey;
-        this.eventListenerMapping = eventListenerMapping;
+        this.eventListeners = eventListeners;
         this.errorHandler = errorHandler;
 
         undeliveredMessages = new LinkedBlockingQueue<>();
@@ -73,7 +72,7 @@ final class PartitionProcessor {
         return isTerminated.get();
     }
 
-    void waitForHandlersToTerminate(long timeoutMillis) {
+    void waitForEventListenersToTerminate(long timeoutMillis) {
         stopProcessing(); // ensure that we're shutting down
 
         try {
@@ -119,13 +118,13 @@ final class PartitionProcessor {
             }
 
             try {
-                EventMessage<? extends Message> message = parseMessage();
-                if (message == null) {
-                    // Can not even parse the message, so we give up.
+                EventMessage<? extends Message> eventMessage = parseEventMessage();
+                if (eventMessage == null) {
+                    // Can not even parse the eventMessage, so we give up.
                     return;
                 }
 
-                deliverToMessageHandler(message);
+                deliverToEventListener(eventMessage);
 
             } catch (Throwable unexpectedError) {
                 // Anything that reaches here could be potentially a condition that the thread could not recover from.
@@ -139,7 +138,7 @@ final class PartitionProcessor {
         }
 
 
-        private EventMessage<? extends Message> parseMessage() {
+        private EventMessage<? extends Message> parseEventMessage() {
             Envelope envelope = null;
 
             try {
@@ -151,15 +150,15 @@ final class PartitionProcessor {
             }
 
             try {
-                MessageType type = new MessageType(envelope.getMessageType());
+                String type = envelope.getTypeName();
 
-                Parser<Message> parser = eventListenerMapping.getParser(type);
+                Parser<Message> parser = eventListeners.getParser(type);
                 if (parser == null) {
                     throw new UnknownMessageTypeException(type);
                 }
 
                 Message innerMessage = parser.parseFrom(envelope.getInnerMessage());
-                return Messages.fromKafka(innerMessage, envelope, record);
+                return EventMessages.fromKafka(innerMessage, envelope, record);
             } catch (InvalidProtocolBufferException | UnknownMessageTypeException unrecoverableParsingError) {
                 markAsConsumed(record.offset());
                 parsingFailed(envelope, unrecoverableParsingError);
@@ -168,39 +167,38 @@ final class PartitionProcessor {
         }
 
         @SuppressWarnings("unchecked")
-        private void deliverToMessageHandler(EventMessage message) {
+        private void deliverToEventListener(EventMessage eventMessage) {
             boolean tryDeliverMessage = true;
             boolean deliveryFailed = true;
 
-            WoowContext context = message.getMetadata().newContextFromMetadata();
+            WoowContext context = eventMessage.getMetadata().newContextFromMetadata();
 
             try {
                 while (tryDeliverMessage) {
                     try {
-                        MessageType messageType = message.getMetadata().getType();
-                        EventListener handler = eventListenerMapping.getEventListener(messageType);
-                        if (handler == null) {
-                            throw new UnknownMessageHandlerException(messageType);
+                        String typeName = eventMessage.getMetadata().getTypeName();
+                        EventListener eventListener = eventListeners.getEventListener(typeName);
+                        if (eventListener == null) {
+                            throw new IllegalArgumentException(typeName);
                         }
 
-                        deliveryStarted(message, handler, context);
+                        deliveryStarted(eventMessage, eventListener, context);
 
-                        // Leave the framework here: hand over execution to service-specific handler.
-                        handler.handle(message, context);
+                        // Leave the framework here: hand over execution to service-specific eventListener.
+                        eventListener.handle(eventMessage, context);
                         deliveryFailed = false;
 
                         break;
                     } catch (Exception failure) {
-                        // Strategy decides: Should we retry to deliver the failed message?
-                        tryDeliverMessage = errorHandler.handleError(message, failure);
-                        deliveryFailed(message, failure, tryDeliverMessage);
+                        // Strategy decides: Should we retry to deliver the failed eventMessage?
+                        tryDeliverMessage = errorHandler.handleError(eventMessage, failure);
+                        deliveryFailed(eventMessage, failure, tryDeliverMessage);
                     }
                 }
-
             } finally {
-                // consume the message - even if delivery failed
-                markAsConsumed(message.getMetadata().getOffset());
-                deliveryEnded(message, deliveryFailed);
+                // consume the eventMessage - even if delivery failed
+                markAsConsumed(eventMessage.getMetadata().getOffset());
+                deliveryEnded(eventMessage, deliveryFailed);
             }
 
 
@@ -232,22 +230,22 @@ final class PartitionProcessor {
 
     // Offset / commit handling --------------------------------------------------
 
-    TopicPartition getAssignedPartition() {
+    public TopicPartition getAssignedPartition() {
         return partitionKey;
     }
 
 
-    int numberOfUnprocessedMessages() {
+    private int numberOfUnprocessedMessages() {
         // Thread safety: snapshot value
         return undeliveredMessages.size();
     }
 
-    void markAsConsumed(long messageOffset) {
+    private void markAsConsumed(long messageOffset) {
         // Single threaded execution preserves strict ordering.
         lastConsumedOffset.set(messageOffset);
     }
 
-    boolean hasUncommittedMessages() {
+    protected boolean hasUncommittedMessages() {
         // Thread safety: it's ok to use a snapshot of the lastConsumedOffset,
         // as we will have constant progress on this value.
         // So it doesn't matter if we use a bit outdated value;
@@ -255,7 +253,7 @@ final class PartitionProcessor {
         return lastComittedOffset.get() < (lastConsumedOffset.get() + 1);
     }
 
-    long getCommitOffsetAndClear() {
+    protected long getCommitOffsetAndClear() {
         // Commit offset always points to next unconsumed message.
         // Thread safety: see hasUncommittedMessages()
 
@@ -263,29 +261,24 @@ final class PartitionProcessor {
         return lastComittedOffset.get();
     }
 
-    long getLastCommittedOffset() {
+    public long getLastCommittedOffset() {
         return lastComittedOffset.get();
     }
 
-    void forceSetLastCommittedOffset(long lastComittedOffset) {
+    public void forceSetLastCommittedOffset(long lastComittedOffset) {
         LOGGER.info("forceSetLastCommittedOffset of partition {} to {}", partitionKey, lastComittedOffset);
         this.lastComittedOffset.set(lastComittedOffset);
     }
 
 
     // Flow control --------------------------------------------------
-    boolean isPaused() {
+    protected boolean isPaused() {
         return numberOfUnprocessedMessages() > MAX_MESSAGES_IN_FLIGHT;
     }
 
-    boolean shouldResume() {
+    protected boolean shouldResume() {
         // simple logic for now - from the resume docs: "If the partitions were not previously paused,
         // this method is a no-op."
         return !isPaused();
-    }
-
-    // Test access
-    EventListenerMapping getTypeDictionary() {
-        return eventListenerMapping;
     }
 }

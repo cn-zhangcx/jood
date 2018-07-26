@@ -1,7 +1,7 @@
 package com.github.dxee.woow.eventhandling;
 
 /**
- * EventProcessor
+ * Event processor
  *
  * @author bing.fan
  * 2018-07-06 18:25

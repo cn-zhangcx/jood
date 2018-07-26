@@ -10,25 +10,29 @@ import com.google.common.base.Strings;
  * - Kafka related information such as topic, partition id, partitioning key and the offset of the message in the
  * partition.
  * - Header fields sent with the Message (in the Envolope),
- * e.g. message id, type of the inner message, correlation ids, etc.
+ * e.g. message id, typeName of the inner message, correlation ids, etc.
  * <p>
  * Depending on the message exchange pattern, some fields are optional.
  * <p>
  * For request-response, the request requires to have the reply-to topic set.
  * The consumer of the request must send the response back to the reply-to topic.
  * In the response, the requestCorrelationId is required and refers to the message id of the original request.
+ *
+ * @author bing.fan
+ * 2018-07-05 17:30
  */
 public class Metadata {
-    // Immutable
-
     // Keep in sync with Messaging.proto / message Envelope
 
     // Inbound or outbound message, i.e. did we receive it or is it a newly created one?
     private final boolean wasReceived;
 
+    // REQUIRED.
+    private final String typeName;
+
     // Kafka information
     // The topic this message was received on (INBOUND) or is to be send to (OUTBOUND).
-    private final Topic topic;
+    private final String topic;
     // The key used to determine the partition in the topic. May be null.
     private final String partitioningKey;
     // The id of the topic partition - only for INBOUND.
@@ -50,15 +54,12 @@ public class Metadata {
     // REQUIRED for RESPONSE. This response correlates to the message id of the original request.
     private final String requestCorrelationId;
     // REQUIRED for REQUEST. Send responses for this request to the given address. See class Topic for syntax.
-    private final Topic replyTo;
-
-    // REQUIRED.
-    private final MessageType type;
+    private final String replyTo;
 
     // Object instantiation is done via factory
-    public Metadata(boolean wasReceived, Topic topic, String partitioningKey, int partitionId,
+    public Metadata(boolean wasReceived, String topic, String partitioningKey, int partitionId,
                     long offset, String messageId, String correlationId, String requestCorrelationId,
-                    Topic replyTo, MessageType type) {
+                    String replyTo, String typeName) {
         this.wasReceived = wasReceived;
 
         if (topic == null || topic.isEmpty()) {
@@ -82,10 +83,10 @@ public class Metadata {
         this.requestCorrelationId = requestCorrelationId;
         this.replyTo = replyTo;
 
-        if (type == null) {
-            throw new IllegalArgumentException("type is required");
+        if (typeName == null) {
+            throw new IllegalArgumentException("typeName is required");
         }
-        this.type = type;
+        this.typeName = typeName;
     }
 
     public boolean isInbound() {
@@ -100,7 +101,7 @@ public class Metadata {
         return wasReceived;
     }
 
-    public Topic getTopic() {
+    public String getTopic() {
         return topic;
     }
 
@@ -128,12 +129,12 @@ public class Metadata {
         return requestCorrelationId;
     }
 
-    public Topic getReplyTo() {
+    public String getReplyTo() {
         return replyTo;
     }
 
-    public MessageType getType() {
-        return type;
+    public String getTypeName() {
+        return typeName;
     }
 
 
@@ -153,7 +154,7 @@ public class Metadata {
                 .add("correlationId", correlationId)
                 .add("requestCorrelationId", requestCorrelationId)
                 .add("replyTo", replyTo)
-                .add("type", type)
+                .add("typeName", typeName)
                 .toString();
     }
 }

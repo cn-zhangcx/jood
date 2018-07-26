@@ -29,8 +29,8 @@ message Envelope {
 	// Payload:
 	// inner message type and serialized bytes
 
-	// REQUIRED. See class MessageType for syntax.
-	string message_type = 100;
+	// REQUIRED. See class String for syntax.
+	string type_name = 100;
 
 	// REQUIRED. byte[] for the serialized inner protobuf message
 	bytes innerMessage = 101;
