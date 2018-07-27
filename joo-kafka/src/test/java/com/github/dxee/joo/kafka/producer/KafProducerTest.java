@@ -56,8 +56,10 @@ public class KafProducerTest {
         final CountDownLatch requestLatch = new CountDownLatch(N);
         final CountDownLatch responseLatch = new CountDownLatch(N);
 
-        final EventProcessor requestEventProcessor = consumerForTopic(ping, kafkaBrokerPort, new DiscardFailedMessages());
-        final EventProcessor replyEventProcessor = consumerForTopic(pong, kafkaBrokerPort, new DiscardFailedMessages());
+        final EventProcessor requestEventProcessor = consumerForTopic(ping, kafkaBrokerPort,
+                new DiscardFailedMessages());
+        final EventProcessor replyEventProcessor = consumerForTopic(pong, kafkaBrokerPort,
+                new DiscardFailedMessages());
 
 
         requestEventProcessor.addEventListener(TypeNames.of(SayHelloToCmd.class),
