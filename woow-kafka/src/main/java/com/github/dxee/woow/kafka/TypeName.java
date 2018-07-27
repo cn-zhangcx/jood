@@ -3,7 +3,7 @@ package com.github.dxee.woow.kafka;
 import java.lang.reflect.Type;
 
 /**
- *
+ * Get the typename
  *
  * @author bing.fan
  * 2018-07-10 22:46

@@ -16,7 +16,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 /**
- * KafProducer is a kafka EventBus for EventMessage dispatch
+ * KafProducer is a kafka EventBus for dispatching EventMessage
  *
  * @author bing.fan
  * 2018-07-06 18:17

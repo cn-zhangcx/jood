@@ -25,12 +25,12 @@ public class TestUtils {
 
         boolean flag = false;
         for (int i = 0; i < excludePort.length; i++) {
-            if( port == excludePort[i] ) {
+            if (port == excludePort[i]) {
                 flag = true;
             }
         }
 
-        if(!flag) {
+        if (!flag) {
             return port;
         }
 
