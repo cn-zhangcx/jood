@@ -32,7 +32,7 @@ public final class EventMessages {
         // not required
         String requestCorrelationId = "";
 
-        String type = TypeName.of(protoPayloadMessage);
+        String type = TypeNames.of(protoPayloadMessage);
 
         MetaData meta = new MetaData(wasReceived, target, partitionKey, -1, -1, messageId,
                 correlationId, requestCorrelationId, replyTo, type);
@@ -46,7 +46,7 @@ public final class EventMessages {
         String messageId = UUID.randomUUID().toString();
         String correlationId = context.getCorrelationId();
 
-        String type = TypeName.of(protoPayloadMessage);
+        String type = TypeNames.of(protoPayloadMessage);
 
         // Use default inbox for service.
         if (replyTo == null) {
@@ -79,7 +79,7 @@ public final class EventMessages {
         // not required
         String replyTo = null;
 
-        String type = TypeName.of(protoPayloadMessage);
+        String type = TypeNames.of(protoPayloadMessage);
 
         MetaData meta = new MetaData(wasReceived, target, partitionKey, -1, -1, messageId,
                 correlationId, requestCorrelationId, replyTo, type);
@@ -99,7 +99,7 @@ public final class EventMessages {
         String messageId = envelope.getMessageId();
         String correlationId = envelope.getCorrelationId();
 
-        String type = TypeName.of(protoMessage);
+        String type = TypeNames.of(protoMessage);
 
         String requestCorrelationId = envelope.getRequestCorrelationId();
         String replyTo = envelope.getReplyTo();

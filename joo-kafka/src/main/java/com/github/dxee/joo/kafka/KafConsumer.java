@@ -1,6 +1,5 @@
 package com.github.dxee.joo.kafka;
 
-import com.github.dxee.dject.lifecycle.LifecycleListener;
 import com.github.dxee.joo.eventhandling.ErrorHandler;
 import com.github.dxee.joo.eventhandling.EventListener;
 import com.github.dxee.joo.eventhandling.EventProcessor;
@@ -18,6 +17,9 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
+import javax.inject.Singleton;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -43,7 +45,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * @author bing.fan
  * 2018-07-06 18:17
  */
-public class KafConsumer implements EventProcessor, LifecycleListener {
+@Singleton
+public class KafConsumer implements EventProcessor {
     private static final Logger LOGGER = LoggerFactory.getLogger(KafConsumer.class);
 
     private static final int HANDLER_TIMEOUT_MILLIS = 60 * 1000;
@@ -78,12 +81,15 @@ public class KafConsumer implements EventProcessor, LifecycleListener {
         kafkaConsumer = new KafkaConsumer<>(consumerProperties);
     }
 
+    @PostConstruct
     @Override
     public void start() {
+        // new AssignedPartitions before consume messages
         this.assignedPartitions = new AssignedPartitions(this);
         consumerLoopExecutor.execute(new ConsumerLoop());
     }
 
+    @PreDestroy
     @Override
     public void shutdown() {
         LOGGER.debug("Shutdown requested for consumer in group {} for topic {}", consumerGroupId, topic);
@@ -137,16 +143,6 @@ public class KafConsumer implements EventProcessor, LifecycleListener {
     @Override
     public Parser<Message> getParser(String typeName) {
         return eventMessageParsers.get(typeName);
-    }
-
-    @Override
-    public void onStarted() {
-        start();
-    }
-
-    @Override
-    public void onStopped(Throwable error) {
-        shutdown();
     }
 
     class ConsumerLoop implements Runnable {

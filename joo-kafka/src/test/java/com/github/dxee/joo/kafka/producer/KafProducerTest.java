@@ -12,7 +12,6 @@ import org.junit.Test;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -61,7 +60,7 @@ public class KafProducerTest {
         final EventProcessor replyEventProcessor = consumerForTopic(pong, kafkaBrokerPort, new DiscardFailedMessages());
 
 
-        requestEventProcessor.addEventListener(TypeName.of(SayHelloToCmd.class),
+        requestEventProcessor.addEventListener(TypeNames.of(SayHelloToCmd.class),
                 (EventListener<SayHelloToCmd>) (message, context) -> {
                     SayHelloToReply greeting = SayHelloToReply.newBuilder()
                             .setGreeting("Hello to " + message.getPayload().getName())
@@ -73,12 +72,12 @@ public class KafProducerTest {
 
                 });
 
-        requestEventProcessor.addParser(TypeName.of(SayHelloToCmd.class), parser(SayHelloToCmd.class));
+        requestEventProcessor.addParser(TypeNames.of(SayHelloToCmd.class), parser(SayHelloToCmd.class));
 
-        replyEventProcessor.addEventListener(TypeName.of(SayHelloToReply.class),
+        replyEventProcessor.addEventListener(TypeNames.of(SayHelloToReply.class),
                 (EventListener<SayHelloToReply>) (message, context) -> responseLatch.countDown()
         );
-        replyEventProcessor.addParser(TypeName.of(SayHelloToReply.class), parser(SayHelloToReply.class));
+        replyEventProcessor.addParser(TypeNames.of(SayHelloToReply.class), parser(SayHelloToReply.class));
 
 
         requestEventProcessor.start();

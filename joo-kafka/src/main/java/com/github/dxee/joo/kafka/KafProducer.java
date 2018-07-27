@@ -1,6 +1,5 @@
 package com.github.dxee.joo.kafka;
 
-import com.github.dxee.dject.lifecycle.LifecycleListener;
 import com.github.dxee.joo.eventhandling.EventBus;
 import com.github.dxee.joo.eventhandling.EventMessage;
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -11,6 +10,8 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.PreDestroy;
+import javax.inject.Singleton;
 import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -21,7 +22,8 @@ import java.util.concurrent.TimeUnit;
  * @author bing.fan
  * 2018-07-06 18:17
  */
-public class KafProducer implements EventBus, LifecycleListener {
+@Singleton
+public class KafProducer implements EventBus {
     private static final Logger LOGGER = LoggerFactory.getLogger(KafProducer.class);
 
     private final KafkaProducer<String, byte[]> kafkaProducer;
@@ -35,6 +37,7 @@ public class KafProducer implements EventBus, LifecycleListener {
         LOGGER.info("Created producer.");
     }
 
+    @PreDestroy
     public void shutdown() {
         try {
             kafkaProducer.close(90, TimeUnit.SECONDS);
@@ -80,16 +83,6 @@ public class KafProducer implements EventBus, LifecycleListener {
                 throw new RuntimeException(ex);
             }
         }
-    }
-
-    @Override
-    public void onStarted() {
-
-    }
-
-    @Override
-    public void onStopped(Throwable error) {
-        shutdown();
     }
 }
 
