@@ -20,6 +20,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
+/**
+ * PartitionProcessor
+ *
+ * @author bing.fan
+ * 2018-07-11 11:42
+ */
 public final class PartitionProcessor {
     private static final Logger LOGGER = LoggerFactory.getLogger(PartitionProcessor.class);
 
@@ -32,9 +38,7 @@ public final class PartitionProcessor {
     // Which partition is this processor responsible for?
     private final TopicPartition partitionKey;
 
-    // Injected
-    private final EventListeners eventListeners;
-    private final ErrorHandler errorHandler;
+    private final EventProcessor eventProcessor;
 
     // Lifecycle state
     private final AtomicBoolean isStopped = new AtomicBoolean(false);
@@ -46,14 +50,12 @@ public final class PartitionProcessor {
 
     // Lifecycle --------------------------------------------------
 
-    PartitionProcessor(TopicPartition partitionKey, EventListeners eventListeners,
-                       ErrorHandler errorHandler) {
+    PartitionProcessor(TopicPartition partitionKey, EventProcessor eventProcessor) {
         this.partitionKey = partitionKey;
-        this.eventListeners = eventListeners;
-        this.errorHandler = errorHandler;
 
         undeliveredMessages = new LinkedBlockingQueue<>();
 
+        this.eventProcessor = eventProcessor;
         // Single threaded execution per partition to preserve ordering guarantees.
         // EXTENSION:
         // - if required, allow multiple threads sacrificing ordering.
@@ -152,7 +154,7 @@ public final class PartitionProcessor {
             try {
                 String type = envelope.getTypeName();
 
-                Parser<Message> parser = eventListeners.getParser(type);
+                Parser<Message> parser = eventProcessor.getParser(type);
                 if (parser == null) {
                     throw new UnknownMessageTypeException(type);
                 }
@@ -177,7 +179,7 @@ public final class PartitionProcessor {
                 while (tryDeliverMessage) {
                     try {
                         String typeName = eventMessage.getMetaData().getTypeName();
-                        EventListener eventListener = eventListeners.getEventListener(typeName);
+                        EventListener eventListener = eventProcessor.getEventListener(typeName);
                         if (eventListener == null) {
                             throw new IllegalArgumentException(typeName);
                         }
@@ -191,7 +193,7 @@ public final class PartitionProcessor {
                         break;
                     } catch (Exception failure) {
                         // Strategy decides: Should we retry to deliver the failed eventMessage?
-                        tryDeliverMessage = errorHandler.handleError(eventMessage, failure);
+                        tryDeliverMessage = eventProcessor.getErrorHandler().handleError(eventMessage, failure);
                         deliveryFailed(eventMessage, failure, tryDeliverMessage);
                     }
                 }

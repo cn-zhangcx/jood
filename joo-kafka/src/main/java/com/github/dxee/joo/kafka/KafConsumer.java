@@ -1,9 +1,13 @@
 package com.github.dxee.joo.kafka;
 
 import com.github.dxee.dject.lifecycle.LifecycleListener;
+import com.github.dxee.joo.eventhandling.ErrorHandler;
+import com.github.dxee.joo.eventhandling.EventListener;
 import com.github.dxee.joo.eventhandling.EventProcessor;
 import com.github.dxee.joo.kafka.consumer.AssignedPartitions;
 import com.github.dxee.joo.kafka.consumer.PartitionProcessor;
+import com.google.protobuf.Message;
+import com.google.protobuf.Parser;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -47,30 +51,36 @@ public class KafConsumer implements EventProcessor, LifecycleListener {
     // every six hours
     private static final long COMMIT_REFRESH_INTERVAL_MILLIS = 6 * 60 * 60 * 1000;
 
-    private final String topic;
-    private final String consumerGroupId;
-    private final KafkaConsumer<String, byte[]> kafkaConsumer;
-    private final AssignedPartitions assignedPartitions;
+    // synchronized because put may be executed in different thread than read access
+    // if synchronization is found too heavy for this, extract interface and implement
+    // an immutable dictionary and another modifiable one
+    private final Map<String, EventListener<? extends Message>> eventListeners
+            = Collections.synchronizedMap(new HashMap<>());
+    private final Map<String, Parser<Message>> eventMessageParsers
+            = Collections.synchronizedMap(new HashMap<>());
     private final ExecutorService consumerLoopExecutor = Executors.newSingleThreadExecutor();
     private final AtomicBoolean isStopped = new AtomicBoolean(false);
 
-    // Build by ConsumerFactory
-    public KafConsumer(String topic, String consumerGroupId, Properties consumerProperties,
-                       AssignedPartitions assignedPartitions) {
+    private ErrorHandler errorHandler;
+    private AssignedPartitions assignedPartitions;
+
+    private final String topic;
+    private final String consumerGroupId;
+    private final KafkaConsumer<String, byte[]> kafkaConsumer;
+
+    public KafConsumer(String topic, String consumerGroupId, Properties consumerProperties) {
         this.topic = topic;
         this.consumerGroupId = consumerGroupId;
-
         // Mandatory settings, not changeable
         consumerProperties.put("group.id", consumerGroupId);
         consumerProperties.put("key.deserializer", StringDeserializer.class.getName());
         consumerProperties.put("value.deserializer", ByteArrayDeserializer.class.getName());
-
         kafkaConsumer = new KafkaConsumer<>(consumerProperties);
-        this.assignedPartitions = assignedPartitions;
     }
 
     @Override
     public void start() {
+        this.assignedPartitions = new AssignedPartitions(this);
         consumerLoopExecutor.execute(new ConsumerLoop());
     }
 
@@ -89,14 +99,44 @@ public class KafConsumer implements EventProcessor, LifecycleListener {
             LOGGER.error("consumer loop executor stop exception catched within {} seconds", timeout, e);
         }
 
-        Set<TopicPartition> allPartitions = assignedPartitions.allPartitions();
-        assignedPartitions.stopProcessing(allPartitions);
-        assignedPartitions.waitForEventListenersToComplete(allPartitions, HANDLER_TIMEOUT_MILLIS);
+        assignedPartitions.stopAllProcessor();
+        assignedPartitions.waitForAllEventListenersToComplete(HANDLER_TIMEOUT_MILLIS);
         kafkaConsumer.commitSync(assignedPartitions.offsetsToBeCommitted());
 
         kafkaConsumer.close();
 
         LOGGER.info("KafConsumer in group {} for topic {} was shut down.", consumerGroupId, topic);
+    }
+
+    @Override
+    public void addEventListener(String typeName, EventListener<? extends Message> eventListener) {
+        eventListeners.put(typeName, eventListener);
+    }
+
+
+    @Override
+    public EventListener<? extends Message> getEventListener(String typeName) {
+        return eventListeners.get(typeName);
+    }
+
+    @Override
+    public void setErrorHandler(ErrorHandler errorHandler) {
+        this.errorHandler = errorHandler;
+    }
+
+    @Override
+    public ErrorHandler getErrorHandler() {
+        return errorHandler;
+    }
+
+    @Override
+    public void addParser(String typeName, Parser<Message> parser) {
+        eventMessageParsers.put(typeName, parser);
+    }
+
+    @Override
+    public Parser<Message> getParser(String typeName) {
+        return eventMessageParsers.get(typeName);
     }
 
     @Override
@@ -226,7 +266,7 @@ public class KafConsumer implements EventProcessor, LifecycleListener {
         public void onPartitionsRevoked(Collection<TopicPartition> revokedPartitions) {
             LOGGER.debug("ConsumerRebalanceListener.onPartitionsRevoked on {}", revokedPartitions);
 
-            assignedPartitions.stopProcessing(revokedPartitions);
+            assignedPartitions.stopProcessor(revokedPartitions);
             assignedPartitions.waitForEventListenersToComplete(revokedPartitions, HANDLER_TIMEOUT_MILLIS);
 
             kafkaConsumer.commitSync(assignedPartitions.offsetsToBeCommitted());

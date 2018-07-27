@@ -2,9 +2,7 @@ package com.github.dxee.joo.kafka.producer;
 
 import com.github.dxee.joo.JooContext;
 import com.github.dxee.joo.kafka.*;
-import com.github.dxee.joo.kafka.consumer.AssignedPartitions;
 import com.github.dxee.joo.kafka.consumer.DiscardFailedMessages;
-import com.github.dxee.joo.kafka.consumer.EventListeners;
 import com.github.dxee.joo.kafka.embedded.KafkaCluster;
 import com.github.dxee.joo.eventhandling.*;
 import com.google.protobuf.Message;
@@ -13,6 +11,8 @@ import org.apache.kafka.clients.CommonClientConfigs;
 import org.junit.Test;
 
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -57,9 +57,11 @@ public class KafProducerTest {
         final CountDownLatch requestLatch = new CountDownLatch(N);
         final CountDownLatch responseLatch = new CountDownLatch(N);
 
-        EventListeners eventListeners = new EventListeners();
+        final EventProcessor requestEventProcessor = consumerForTopic(ping, kafkaBrokerPort, new DiscardFailedMessages());
+        final EventProcessor replyEventProcessor = consumerForTopic(pong, kafkaBrokerPort, new DiscardFailedMessages());
 
-        eventListeners.addListener(TypeName.of(SayHelloToCmd.class),
+
+        requestEventProcessor.addEventListener(TypeName.of(SayHelloToCmd.class),
                 (EventListener<SayHelloToCmd>) (message, context) -> {
                     SayHelloToReply greeting = SayHelloToReply.newBuilder()
                             .setGreeting("Hello to " + message.getPayload().getName())
@@ -70,34 +72,31 @@ public class KafProducerTest {
                     requestLatch.countDown();
 
                 });
-        eventListeners.addParser(TypeName.of(SayHelloToCmd.class), parser(SayHelloToCmd.class));
 
-        eventListeners.addListener(TypeName.of(SayHelloToReply.class),
+        requestEventProcessor.addParser(TypeName.of(SayHelloToCmd.class), parser(SayHelloToCmd.class));
+
+        replyEventProcessor.addEventListener(TypeName.of(SayHelloToReply.class),
                 (EventListener<SayHelloToReply>) (message, context) -> responseLatch.countDown()
         );
-        eventListeners.addParser(TypeName.of(SayHelloToReply.class), parser(SayHelloToReply.class));
+        replyEventProcessor.addParser(TypeName.of(SayHelloToReply.class), parser(SayHelloToReply.class));
 
-        final KafConsumer requestConsumer = consumerForTopic(ping, kafkaBrokerPort,
-                eventListeners, new DiscardFailedMessages());
-        final KafConsumer replyConsumer = consumerForTopic(pong, kafkaBrokerPort,
-                eventListeners, new DiscardFailedMessages());
 
-        requestConsumer.start();
-        replyConsumer.start();
+        requestEventProcessor.start();
+        replyEventProcessor.start();
 
         assertTrue(requestLatch.await(60, TimeUnit.SECONDS));
 
         assertTrue(responseLatch.await(60, TimeUnit.SECONDS));
 
         kafProducer.shutdown();
-        requestConsumer.shutdown();
-        replyConsumer.shutdown();
+        requestEventProcessor.shutdown();
+        replyEventProcessor.shutdown();
     }
 
     @SuppressWarnings("unchecked")
     private Parser<Message> parser(Class clazz) {
         try {
-            java.lang.reflect.Method method = clazz.getMethod("parser");
+            Method method = clazz.getMethod("parser");
             return (Parser<com.google.protobuf.Message>) method.invoke(null, (Object[]) null);
 
         } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException ignored) {
@@ -107,12 +106,14 @@ public class KafProducerTest {
         return null;
     }
 
-    public KafConsumer consumerForTopic(String topic, int port, EventListeners eventListeners,
-                                        DiscardFailedMessages failedMessageStrategy) {
+    public EventProcessor consumerForTopic(String topic, int port, DiscardFailedMessages failedMessageStrategy) {
         String consumerGroupId = defaultConsumerGroupId(topic);
 
-        return new KafConsumer(topic, consumerGroupId, defaultKafkaConfig(port),
-                new AssignedPartitions(eventListeners, failedMessageStrategy));
+        EventProcessor eventProcessor = new KafConsumer(topic, consumerGroupId, defaultKafkaConfig(port));
+
+        eventProcessor.setErrorHandler(failedMessageStrategy);
+
+        return eventProcessor;
     }
 
     private String defaultConsumerGroupId(String topic) {
