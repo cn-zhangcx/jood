@@ -12,30 +12,10 @@ import com.google.protobuf.Parser;
 public interface EventProcessor {
 
     /**
-     * Add event listener to the event processor
-     * @param typeName the event message type name
-     * @param eventListener the event listener
+     *  Get the listener register of event processor
+     * @return
      */
-    void addEventListener(String typeName, EventListener<? extends Message> eventListener);
-
-    EventListener<? extends Message> getEventListener(String typeName);
-
-    /**
-     * Add error handler to event processor
-     * @param errorHandler the error handler
-     */
-    void setErrorHandler(ErrorHandler errorHandler);
-
-    ErrorHandler getErrorHandler();
-
-    /**
-     * Add event messeage protobuf parser to the event processor
-     * @param typeName the event listener type name
-     * @param parser the event message protobuf parser
-     */
-    void addParser(String typeName, Parser<Message> parser);
-
-    Parser<Message> getParser(String typeName);
+    ListenerRegister getListenerRegister();
 
     /**
      * Start processing events.

@@ -1,17 +1,21 @@
 package com.github.dxee.joo.kafka.producer;
 
+import com.github.dxee.dject.Dject;
 import com.github.dxee.joo.JooContext;
 import com.github.dxee.joo.kafka.*;
-import com.github.dxee.joo.kafka.consumer.DiscardFailedMessages;
+import com.github.dxee.joo.kafka.DiscardFailedMessages;
 import com.github.dxee.joo.kafka.embedded.KafkaCluster;
 import com.github.dxee.joo.eventhandling.*;
+import com.google.inject.AbstractModule;
+import com.google.inject.Provides;
+import com.google.inject.name.Names;
 import com.google.protobuf.Message;
 import com.google.protobuf.Parser;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.junit.Test;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -56,31 +60,98 @@ public class KafProducerTest {
         final CountDownLatch requestLatch = new CountDownLatch(N);
         final CountDownLatch responseLatch = new CountDownLatch(N);
 
+
+        Map<String, EventListener<? extends Message>> replayEventListeners = new HashMap<>();
+        replayEventListeners.put(TypeNames.of(SayHelloToReply.class),
+                (EventListener<SayHelloToReply>) (message, context) -> responseLatch.countDown());
+
+        Map<String, Parser<? extends Message>> requestParsers = new HashMap<>();
+        requestParsers.put(TypeNames.of(SayHelloToCmd.class), SayHelloToCmd.parser());
+        requestParsers.put(TypeNames.of(SayHelloToReply.class), SayHelloToReply.parser());
+        Map<String, Parser<? extends Message>> replayParsers = new HashMap<>();
+        replayParsers.putAll(replayParsers);
+
+        Dject.newBuilder().withModules(new AbstractModule() {
+            @Override
+            protected void configure() {
+                bind(ListenerRegister.class)
+                        .annotatedWith(Names.named("requestListenerRegister"))
+                        .toInstance();
+            }
+
+            @Provides
+            public ListenerRegister listenerRegister() {
+                Map<String, EventListener<? extends Message>> requestEventListeners = new HashMap<>();
+                requestEventListeners.put(TypeNames.of(SayHelloToCmd.class),
+                        (EventListener<SayHelloToCmd>) (message, context) -> {
+                            SayHelloToReply greeting = SayHelloToReply.newBuilder()
+                                    .setGreeting("Hello to " + message.getPayload().getName())
+                                    .build();
+                            EventMessage reply = EventMessages.replyTo(message, greeting, context);
+
+                            kafProducer.publish(reply);
+                            requestLatch.countDown();
+
+                        });
+
+                return new ListenersRegistry(requestEventListeners,
+                        requestParsers, new DiscardFailedMessages());
+            }
+        });
+
+
+        final ListenerRegister requestListenerRegister = new ListenersRegistry() {
+            @Override
+            public void registerListeners() {
+                addEventListener(TypeNames.of(SayHelloToCmd.class),
+                        (EventListener<SayHelloToCmd>) (message, context) -> {
+                            SayHelloToReply greeting = SayHelloToReply.newBuilder()
+                                    .setGreeting("Hello to " + message.getPayload().getName())
+                                    .build();
+                            EventMessage reply = EventMessages.replyTo(message, greeting, context);
+
+                            kafProducer.publish(reply);
+                            requestLatch.countDown();
+
+                        });
+            }
+
+            @Override
+            public void registerErrorHandler() {
+                setErrorHandler(new DiscardFailedMessages());
+            }
+
+            @Override
+            public void registerParsers() {
+                addParser(TypeNames.of(SayHelloToCmd.class), parser(SayHelloToCmd.class));
+                addParser(TypeNames.of(SayHelloToReply.class), parser(SayHelloToReply.class));
+            }
+        };
+
+        final ListenerRegister relayListenerRegister = new ListenersRegistry() {
+            @Override
+            public void registerListeners() {
+                addEventListener(TypeNames.of(SayHelloToReply.class),
+                        (EventListener<SayHelloToReply>) (message, context) -> responseLatch.countDown()
+                );
+            }
+
+            @Override
+            public void registerErrorHandler() {
+                setErrorHandler(new DiscardFailedMessages());
+            }
+
+            @Override
+            public void registerParsers() {
+                addParser(TypeNames.of(SayHelloToCmd.class), parser(SayHelloToCmd.class));
+                addParser(TypeNames.of(SayHelloToReply.class), parser(SayHelloToReply.class));
+            }
+        };
+
         final EventProcessor requestEventProcessor = consumerForTopic(ping, kafkaBrokerPort,
-                new DiscardFailedMessages());
+                requestListenerRegister);
         final EventProcessor replyEventProcessor = consumerForTopic(pong, kafkaBrokerPort,
-                new DiscardFailedMessages());
-
-
-        requestEventProcessor.addEventListener(TypeNames.of(SayHelloToCmd.class),
-                (EventListener<SayHelloToCmd>) (message, context) -> {
-                    SayHelloToReply greeting = SayHelloToReply.newBuilder()
-                            .setGreeting("Hello to " + message.getPayload().getName())
-                            .build();
-                    EventMessage reply = EventMessages.replyTo(message, greeting, context);
-
-                    kafProducer.publish(reply);
-                    requestLatch.countDown();
-
-                });
-
-        requestEventProcessor.addParser(TypeNames.of(SayHelloToCmd.class), parser(SayHelloToCmd.class));
-
-        replyEventProcessor.addEventListener(TypeNames.of(SayHelloToReply.class),
-                (EventListener<SayHelloToReply>) (message, context) -> responseLatch.countDown()
-        );
-        replyEventProcessor.addParser(TypeNames.of(SayHelloToReply.class), parser(SayHelloToReply.class));
-
+                relayListenerRegister);
 
         requestEventProcessor.start();
         replyEventProcessor.start();
@@ -95,24 +166,23 @@ public class KafProducerTest {
     }
 
     @SuppressWarnings("unchecked")
-    private Parser<Message> parser(Class clazz) {
-        try {
-            Method method = clazz.getMethod("parser");
-            return (Parser<com.google.protobuf.Message>) method.invoke(null, (Object[]) null);
+//    private Parser<?Message> parser(Class clazz) {
+//        try {
+//            Method method = clazz.getMethod("parser");
+//            return (Parser<com.google.protobuf.Message>) method.invoke(null, (Object[]) null);
+//        } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException ignored) {
+//            // too noisy: logger.debug("Ignoring protobuf type {}
+//            // as we cannot invoke static method parse().", clazz.getTypeName());
+//        }
+//        return null;
+//    }
 
-        } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException ignored) {
-            // too noisy: logger.debug("Ignoring protobuf type {}
-            // as we cannot invoke static method parse().", clazz.getTypeName());
-        }
-        return null;
-    }
-
-    public EventProcessor consumerForTopic(String topic, int port, DiscardFailedMessages failedMessageStrategy) {
+    public EventProcessor consumerForTopic(String topic, int port,
+                                           ListenerRegister listenerRegister) {
         String consumerGroupId = defaultConsumerGroupId(topic);
 
-        EventProcessor eventProcessor = new KafConsumer(topic, consumerGroupId, defaultKafkaConfig(port));
-
-        eventProcessor.setErrorHandler(failedMessageStrategy);
+        EventProcessor eventProcessor = new KafConsumer(topic, consumerGroupId, defaultKafkaConfig(port),
+                listenerRegister);
 
         return eventProcessor;
     }

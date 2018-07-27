@@ -1,4 +1,4 @@
-package com.github.dxee.joo.kafka.consumer;
+package com.github.dxee.joo.kafka;
 
 import com.github.dxee.joo.eventhandling.ErrorHandler;
 import com.github.dxee.joo.eventhandling.EventMessage;

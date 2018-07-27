@@ -1,4 +1,4 @@
-package com.github.dxee.joo.kafka.consumer;
+package com.github.dxee.joo.kafka.internal;
 
 import com.github.dxee.joo.eventhandling.EventProcessor;
 import org.apache.kafka.clients.consumer.ConsumerRecords;

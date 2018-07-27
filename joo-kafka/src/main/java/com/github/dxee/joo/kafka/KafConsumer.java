@@ -1,12 +1,9 @@
 package com.github.dxee.joo.kafka;
 
-import com.github.dxee.joo.eventhandling.ErrorHandler;
-import com.github.dxee.joo.eventhandling.EventListener;
 import com.github.dxee.joo.eventhandling.EventProcessor;
-import com.github.dxee.joo.kafka.consumer.AssignedPartitions;
-import com.github.dxee.joo.kafka.consumer.PartitionProcessor;
-import com.google.protobuf.Message;
-import com.google.protobuf.Parser;
+import com.github.dxee.joo.eventhandling.ListenerRegister;
+import com.github.dxee.joo.kafka.internal.AssignedPartitions;
+import com.github.dxee.joo.kafka.internal.PartitionProcessor;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -19,7 +16,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
-import javax.inject.Singleton;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -45,7 +41,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * @author bing.fan
  * 2018-07-06 18:17
  */
-@Singleton
 public class KafConsumer implements EventProcessor {
     private static final Logger LOGGER = LoggerFactory.getLogger(KafConsumer.class);
 
@@ -54,24 +49,18 @@ public class KafConsumer implements EventProcessor {
     // every six hours
     private static final long COMMIT_REFRESH_INTERVAL_MILLIS = 6 * 60 * 60 * 1000;
 
-    // synchronized because put may be executed in different thread than read access
-    // if synchronization is found too heavy for this, extract interface and implement
-    // an immutable dictionary and another modifiable one
-    private final Map<String, EventListener<? extends Message>> eventListeners
-            = Collections.synchronizedMap(new HashMap<>());
-    private final Map<String, Parser<Message>> eventMessageParsers
-            = Collections.synchronizedMap(new HashMap<>());
     private final ExecutorService consumerLoopExecutor = Executors.newSingleThreadExecutor();
     private final AtomicBoolean isStopped = new AtomicBoolean(false);
 
-    private ErrorHandler errorHandler;
     private AssignedPartitions assignedPartitions;
 
     private final String topic;
     private final String consumerGroupId;
     private final KafkaConsumer<String, byte[]> kafkaConsumer;
+    private final ListenerRegister listenerRegister;
 
-    public KafConsumer(String topic, String consumerGroupId, Properties consumerProperties) {
+    public KafConsumer(String topic, String consumerGroupId, Properties consumerProperties,
+                       ListenerRegister listenerRegister) {
         this.topic = topic;
         this.consumerGroupId = consumerGroupId;
         // Mandatory settings, not changeable
@@ -79,6 +68,7 @@ public class KafConsumer implements EventProcessor {
         consumerProperties.put("key.deserializer", StringDeserializer.class.getName());
         consumerProperties.put("value.deserializer", ByteArrayDeserializer.class.getName());
         kafkaConsumer = new KafkaConsumer<>(consumerProperties);
+        this.listenerRegister = listenerRegister;
     }
 
     @PostConstruct
@@ -115,34 +105,8 @@ public class KafConsumer implements EventProcessor {
     }
 
     @Override
-    public void addEventListener(String typeName, EventListener<? extends Message> eventListener) {
-        eventListeners.put(typeName, eventListener);
-    }
-
-
-    @Override
-    public EventListener<? extends Message> getEventListener(String typeName) {
-        return eventListeners.get(typeName);
-    }
-
-    @Override
-    public void setErrorHandler(ErrorHandler errorHandler) {
-        this.errorHandler = errorHandler;
-    }
-
-    @Override
-    public ErrorHandler getErrorHandler() {
-        return errorHandler;
-    }
-
-    @Override
-    public void addParser(String typeName, Parser<Message> parser) {
-        eventMessageParsers.put(typeName, parser);
-    }
-
-    @Override
-    public Parser<Message> getParser(String typeName) {
-        return eventMessageParsers.get(typeName);
+    public ListenerRegister getListenerRegister() {
+        return listenerRegister;
     }
 
     class ConsumerLoop implements Runnable {

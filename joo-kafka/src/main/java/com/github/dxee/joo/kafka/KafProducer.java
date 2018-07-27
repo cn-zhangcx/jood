@@ -11,7 +11,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.PreDestroy;
-import javax.inject.Singleton;
 import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -22,7 +21,6 @@ import java.util.concurrent.TimeUnit;
  * @author bing.fan
  * 2018-07-06 18:17
  */
-@Singleton
 public class KafProducer implements EventBus {
     private static final Logger LOGGER = LoggerFactory.getLogger(KafProducer.class);
 

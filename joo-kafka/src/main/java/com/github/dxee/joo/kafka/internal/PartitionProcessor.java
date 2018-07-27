@@ -1,10 +1,12 @@
-package com.github.dxee.joo.kafka.consumer;
+package com.github.dxee.joo.kafka.internal;
 
 import com.github.dxee.joo.JooContext;
+import com.github.dxee.joo.eventhandling.EventListener;
+import com.github.dxee.joo.eventhandling.EventMessage;
+import com.github.dxee.joo.eventhandling.EventProcessor;
 import com.github.dxee.joo.kafka.Envelope;
 import com.github.dxee.joo.kafka.EventMessages;
 import com.github.dxee.joo.kafka.UnknownMessageTypeException;
-import com.github.dxee.joo.eventhandling.*;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Message;
 import com.google.protobuf.Parser;
@@ -154,7 +156,7 @@ public final class PartitionProcessor {
             try {
                 String type = envelope.getTypeName();
 
-                Parser<Message> parser = eventProcessor.getParser(type);
+                Parser<? extends Message> parser = eventProcessor.getListenerRegister().getParser(type);
                 if (parser == null) {
                     throw new UnknownMessageTypeException(type);
                 }
@@ -179,7 +181,7 @@ public final class PartitionProcessor {
                 while (tryDeliverMessage) {
                     try {
                         String typeName = eventMessage.getMetaData().getTypeName();
-                        EventListener eventListener = eventProcessor.getEventListener(typeName);
+                        EventListener eventListener = eventProcessor.getListenerRegister().getEventListener(typeName);
                         if (eventListener == null) {
                             throw new IllegalArgumentException(typeName);
                         }
@@ -193,7 +195,8 @@ public final class PartitionProcessor {
                         break;
                     } catch (Exception failure) {
                         // Strategy decides: Should we retry to deliver the failed eventMessage?
-                        tryDeliverMessage = eventProcessor.getErrorHandler().handleError(eventMessage, failure);
+                        tryDeliverMessage = eventProcessor.getListenerRegister().getErrorHandler()
+                                .handleError(eventMessage, failure);
                         deliveryFailed(eventMessage, failure, tryDeliverMessage);
                     }
                 }
