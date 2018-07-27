@@ -5,7 +5,7 @@ import com.google.common.base.MoreObjects;
 import com.google.common.base.Strings;
 
 /**
- * Metadata information about the Message such as
+ * MetaData information about the Message such as
  * - If it was received from Kafka or is a newly created mesage.
  * - Kafka related information such as topic, partition id, partitioning key and the offset of the message in the
  * partition.
@@ -21,7 +21,7 @@ import com.google.common.base.Strings;
  * @author bing.fan
  * 2018-07-05 17:30
  */
-public class Metadata {
+public class MetaData {
     // Keep in sync with Messaging.proto / message Envelope
 
     // Inbound or outbound message, i.e. did we receive it or is it a newly created one?
@@ -57,12 +57,12 @@ public class Metadata {
     private final String replyTo;
 
     // Object instantiation is done via factory
-    public Metadata(boolean wasReceived, String topic, String partitioningKey, int partitionId,
+    public MetaData(boolean wasReceived, String topic, String partitioningKey, int partitionId,
                     long offset, String messageId, String correlationId, String requestCorrelationId,
                     String replyTo, String typeName) {
         this.wasReceived = wasReceived;
 
-        if (topic == null || topic.isEmpty()) {
+        if (Strings.isNullOrEmpty(topic)) {
             throw new IllegalArgumentException("topic is required");
         }
         this.topic = topic;
@@ -83,7 +83,7 @@ public class Metadata {
         this.requestCorrelationId = requestCorrelationId;
         this.replyTo = replyTo;
 
-        if (typeName == null) {
+        if (Strings.isNullOrEmpty(typeName)) {
             throw new IllegalArgumentException("typeName is required");
         }
         this.typeName = typeName;

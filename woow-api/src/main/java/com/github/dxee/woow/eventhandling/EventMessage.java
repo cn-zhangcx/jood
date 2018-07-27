@@ -11,26 +11,26 @@ import com.google.protobuf.Message;
  */
 public final class EventMessage<T extends Message> {
     private final T payload;
-    private final Metadata metadata;
+    private final MetaData metaData;
 
-    public EventMessage(T payload, Metadata metadata) {
+    public EventMessage(T payload, MetaData metaData) {
         this.payload = payload;
-        this.metadata = metadata;
+        this.metaData = metaData;
     }
 
     public T getPayload() {
         return payload;
     }
 
-    public Metadata getMetadata() {
-        return metadata;
+    public MetaData getMetaData() {
+        return metaData;
     }
 
     @Override
     public String toString() {
         return MoreObjects.toStringHelper(this)
                 .add("payload", payload)
-                .add("metadata", metadata)
+                .add("metaData", metaData)
                 .toString();
     }
 }

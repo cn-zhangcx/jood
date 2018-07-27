@@ -13,7 +13,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Properties;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -47,8 +46,8 @@ public class KafProducer implements EventBus, LifecycleListener {
     }
 
     public void publish(EventMessage eventMessage) {
-        String destinationTopic = eventMessage.getMetadata().getTopic();
-        String partitioningKey = eventMessage.getMetadata().getPartitioningKey();
+        String destinationTopic = eventMessage.getMetaData().getTopic();
+        String partitioningKey = eventMessage.getMetaData().getPartitioningKey();
         Envelope envelope = EventMessages.toKafka(eventMessage);
 
         ProducerRecord<String, byte[]> record = new ProducerRecord<>(destinationTopic, partitioningKey,

@@ -171,12 +171,12 @@ public final class PartitionProcessor {
             boolean tryDeliverMessage = true;
             boolean deliveryFailed = true;
 
-            WoowContext context = eventMessage.getMetadata().newContextFromMetadata();
+            WoowContext context = eventMessage.getMetaData().newContextFromMetadata();
 
             try {
                 while (tryDeliverMessage) {
                     try {
-                        String typeName = eventMessage.getMetadata().getTypeName();
+                        String typeName = eventMessage.getMetaData().getTypeName();
                         EventListener eventListener = eventListeners.getEventListener(typeName);
                         if (eventListener == null) {
                             throw new IllegalArgumentException(typeName);
@@ -197,7 +197,7 @@ public final class PartitionProcessor {
                 }
             } finally {
                 // consume the eventMessage - even if delivery failed
-                markAsConsumed(eventMessage.getMetadata().getOffset());
+                markAsConsumed(eventMessage.getMetaData().getOffset());
                 deliveryEnded(eventMessage, deliveryFailed);
             }
 

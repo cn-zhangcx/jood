@@ -2,7 +2,7 @@ package com.github.dxee.woow.kafka;
 
 import com.github.dxee.woow.WoowContext;
 import com.github.dxee.woow.eventhandling.EventMessage;
-import com.github.dxee.woow.eventhandling.Metadata;
+import com.github.dxee.woow.eventhandling.MetaData;
 import com.google.common.base.Strings;
 import com.google.protobuf.Message;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -34,7 +34,7 @@ public final class EventMessages {
 
         String type = TypeName.of(protoPayloadMessage);
 
-        Metadata meta = new Metadata(wasReceived, target, partitionKey, -1, -1, messageId,
+        MetaData meta = new MetaData(wasReceived, target, partitionKey, -1, -1, messageId,
                 correlationId, requestCorrelationId, replyTo, type);
         return new EventMessage<>(protoPayloadMessage, meta);
     }
@@ -56,7 +56,7 @@ public final class EventMessages {
         // not required
         String requestCorrelationId = "";
 
-        Metadata meta = new Metadata(wasReceived, target, partitionKey, -1, -1, messageId,
+        MetaData meta = new MetaData(wasReceived, target, partitionKey, -1, -1, messageId,
                 correlationId, requestCorrelationId, replyTo, type);
         return new EventMessage<>(protoPayloadMessage, meta);
     }
@@ -68,20 +68,20 @@ public final class EventMessages {
         boolean wasReceived = false;
 
         // By default, return to sender topic using same partitioning scheme.
-        String target = originalRequest.getMetadata().getReplyTo();
-        String partitionKey = originalRequest.getMetadata().getPartitioningKey();
+        String target = originalRequest.getMetaData().getReplyTo();
+        String partitionKey = originalRequest.getMetaData().getPartitioningKey();
 
         String messageId = UUID.randomUUID().toString();
         String correlationId = context.getCorrelationId();
 
-        String requestCorrelationId = originalRequest.getMetadata().getMessageId();
+        String requestCorrelationId = originalRequest.getMetaData().getMessageId();
 
         // not required
         String replyTo = null;
 
         String type = TypeName.of(protoPayloadMessage);
 
-        Metadata meta = new Metadata(wasReceived, target, partitionKey, -1, -1, messageId,
+        MetaData meta = new MetaData(wasReceived, target, partitionKey, -1, -1, messageId,
                 correlationId, requestCorrelationId, replyTo, type);
         return new EventMessage<>(protoPayloadMessage, meta);
     }
@@ -104,7 +104,7 @@ public final class EventMessages {
         String requestCorrelationId = envelope.getRequestCorrelationId();
         String replyTo = envelope.getReplyTo();
 
-        Metadata meta = new Metadata(wasReceived, topic, partitioningKey, partitionId, offset, messageId,
+        MetaData meta = new MetaData(wasReceived, topic, partitioningKey, partitionId, offset, messageId,
                 correlationId, requestCorrelationId, replyTo, type);
         return new EventMessage<>(protoMessage, meta);
     }
@@ -112,7 +112,7 @@ public final class EventMessages {
 
     public static Envelope toKafka(EventMessage message) {
         Envelope.Builder envelope = Envelope.newBuilder();
-        Metadata meta = message.getMetadata();
+        MetaData meta = message.getMetaData();
 
         envelope.setMessageId(meta.getMessageId());
 
