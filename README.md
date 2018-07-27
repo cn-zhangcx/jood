@@ -1,5 +1,5 @@
-# Woow
+# Joo
 A micro framework for microservice.
 
 # Design Principles
-Keep woow small, small, small.
+Keep joo small, small, small.

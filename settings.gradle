@@ -1,7 +1,7 @@
-rootProject.name = 'woow'
+rootProject.name = 'joo'
 
-include 'woow-api'
-include 'woow-jetty'
-include 'woow-kafka'
-include 'woow-metrics'
+include 'joo-api'
+include 'joo-jetty'
+include 'joo-kafka'
+include 'joo-metrics'
 
