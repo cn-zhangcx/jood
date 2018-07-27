@@ -10,6 +10,9 @@ import java.util.UUID;
  * Encapsulates context information needed for services to communicate, share
  * correlation IDs, get information about the original request, gives the
  * ability to pass arbitrary information to services in the service call chain, etc.
+ *
+ * @author bing.fan
+ * 2018-07-10 10:35
  */
 public class JooContext {
     private static final String RPC_ORIGIN_SERVICE = "X-Sx-From-Service";

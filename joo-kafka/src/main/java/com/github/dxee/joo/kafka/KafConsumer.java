@@ -42,7 +42,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class KafConsumer implements EventProcessor, LifecycleListener {
     private static final Logger LOGGER = LoggerFactory.getLogger(KafConsumer.class);
 
-    private static final int HANDLER_TIMEOUT_MILLIS = 60_000;
+    private static final int HANDLER_TIMEOUT_MILLIS = 60 * 1000;
     private static final int POLL_INTERVAL_MILLIS = 300;
     // every six hours
     private static final long COMMIT_REFRESH_INTERVAL_MILLIS = 6 * 60 * 60 * 1000;
@@ -123,7 +123,6 @@ public class KafConsumer implements EventProcessor, LifecycleListener {
                         consumerGroupId, topic, unexpected);
                 return;
             }
-
 
             try {
                 while (!isStopped.get()) {
