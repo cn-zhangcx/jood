@@ -3,13 +3,15 @@ package com.github.dxee.joo.eventhandling;
 import com.github.dxee.joo.JooContext;
 import com.google.protobuf.Message;
 
+import java.lang.reflect.InvocationTargetException;
+
 /**
  * Interface to be implemented by classes that can handle events.
  *
  * @author bing.fan
  * 2018-07-06 18:37
  */
-public interface EventListener<T extends Message> {
+public interface EventHandler<T extends Message> {
 
     /**
      * Callback interface to hand over a event.
@@ -21,6 +23,6 @@ public interface EventListener<T extends Message> {
      * @param eventMessage
      * @param context
      */
-    void handle(EventMessage<T> eventMessage, JooContext context);
+    void handle(EventMessage<T> eventMessage, JooContext context) throws InvocationTargetException, IllegalAccessException;
 
 }

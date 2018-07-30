@@ -1,7 +1,7 @@
 package com.github.dxee.joo.kafka;
 
+import com.github.dxee.joo.eventhandling.EventHandlerRegister;
 import com.github.dxee.joo.eventhandling.EventProcessor;
-import com.github.dxee.joo.eventhandling.ListenerRegister;
 import com.github.dxee.joo.kafka.internal.AssignedPartitions;
 import com.github.dxee.joo.kafka.internal.PartitionProcessor;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
@@ -57,10 +57,10 @@ public class KafConsumer implements EventProcessor {
     private final String topic;
     private final String consumerGroupId;
     private final KafkaConsumer<String, byte[]> kafkaConsumer;
-    private final ListenerRegister listenerRegister;
+    private final EventHandlerRegister eventHandlerRegister;
 
     public KafConsumer(String topic, String consumerGroupId, Properties consumerProperties,
-                       ListenerRegister listenerRegister) {
+                       EventHandlerRegister eventHandlerRegister) {
         this.topic = topic;
         this.consumerGroupId = consumerGroupId;
         // Mandatory settings, not changeable
@@ -68,13 +68,13 @@ public class KafConsumer implements EventProcessor {
         consumerProperties.put("key.deserializer", StringDeserializer.class.getName());
         consumerProperties.put("value.deserializer", ByteArrayDeserializer.class.getName());
         kafkaConsumer = new KafkaConsumer<>(consumerProperties);
-        this.listenerRegister = listenerRegister;
+        this.eventHandlerRegister = eventHandlerRegister;
     }
 
     @PostConstruct
     @Override
     public void start() {
-        // new AssignedPartitions before consume messages
+        // new AssignedPartitions to manage partitions before consume messages
         this.assignedPartitions = new AssignedPartitions(this);
         consumerLoopExecutor.execute(new ConsumerLoop());
     }
@@ -105,8 +105,8 @@ public class KafConsumer implements EventProcessor {
     }
 
     @Override
-    public ListenerRegister getListenerRegister() {
-        return listenerRegister;
+    public EventHandlerRegister getEventHandlerRegister() {
+        return eventHandlerRegister;
     }
 
     class ConsumerLoop implements Runnable {

@@ -1,22 +1,21 @@
 package com.github.dxee.joo.eventhandling;
 
+import com.google.protobuf.Message;
+
 /**
  * A Strategy interface to allow exchangeable failure handling behaviour.
  *
  * @author bing.fan
  * 2018-07-05 17:29
  */
-public interface ErrorHandler {
+public interface ErrorHandler<T extends Message> {
 
     /**
-     * This method decides if a event message should be re-tried or not.
-     * <p>
-     * It may block the current thread (which is calling the message handler) if a delay between retries is required.
-     *
-     * @param eventMessage       the event
-     * @param failureCause the root cause of the failure
-     * @return true if message delivery should be re-tried, false otherwise
+     * Specify a strategy to manage event handler failed
+     * @param eventMessage       the event message
+     * @param eventHandler       the event handler
+     * @param failureCause       the root cause of the failure
      */
-    boolean handleError(EventMessage eventMessage, Throwable failureCause);
+    void handleError(EventMessage eventMessage, EventHandler<T> eventHandler, Throwable failureCause);
 
 }

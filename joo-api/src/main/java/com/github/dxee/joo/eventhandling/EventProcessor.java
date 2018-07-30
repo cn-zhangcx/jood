@@ -1,8 +1,5 @@
 package com.github.dxee.joo.eventhandling;
 
-import com.google.protobuf.Message;
-import com.google.protobuf.Parser;
-
 /**
  * Event processor
  *
@@ -15,7 +12,7 @@ public interface EventProcessor {
      *  Get the listener register of event processor
      * @return
      */
-    ListenerRegister getListenerRegister();
+    EventHandlerRegister getEventHandlerRegister();
 
     /**
      * Start processing events.

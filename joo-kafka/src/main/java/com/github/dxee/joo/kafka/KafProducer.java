@@ -74,7 +74,7 @@ public class KafProducer implements EventBus {
 
             // The error handling strategy here is to not retry here but pass to the caller:
             // If for example the producer is used in a synchronous context, it probably does not make sense to retry.
-            // However, in an asynchronous context (e.g. in a EventListener) it would be wise to retry.
+            // However, in an asynchronous context (e.g. in a EventHandler) it would be wise to retry.
             if (cause instanceof RuntimeException) {
                 throw (RuntimeException) cause;
             } else {

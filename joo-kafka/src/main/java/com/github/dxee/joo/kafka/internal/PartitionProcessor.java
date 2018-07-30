@@ -1,7 +1,8 @@
 package com.github.dxee.joo.kafka.internal;
 
 import com.github.dxee.joo.JooContext;
-import com.github.dxee.joo.eventhandling.EventListener;
+import com.github.dxee.joo.eventhandling.ErrorHandler;
+import com.github.dxee.joo.eventhandling.EventHandler;
 import com.github.dxee.joo.eventhandling.EventMessage;
 import com.github.dxee.joo.eventhandling.EventProcessor;
 import com.github.dxee.joo.kafka.Envelope;
@@ -15,6 +16,7 @@ import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -128,7 +130,7 @@ public final class PartitionProcessor {
                     return;
                 }
 
-                deliverToEventListener(eventMessage);
+                deliverToEventHandlers(eventMessage);
 
             } catch (Throwable unexpectedError) {
                 // Anything that reaches here could be potentially a condition that the thread could not recover from.
@@ -156,7 +158,7 @@ public final class PartitionProcessor {
             try {
                 String type = envelope.getTypeName();
 
-                Parser<? extends Message> parser = eventProcessor.getListenerRegister().getParser(type);
+                Parser<? extends Message> parser = eventProcessor.getEventHandlerRegister().getParser(type);
                 if (parser == null) {
                     throw new UnknownMessageTypeException(type);
                 }
@@ -171,42 +173,45 @@ public final class PartitionProcessor {
         }
 
         @SuppressWarnings("unchecked")
-        private void deliverToEventListener(EventMessage eventMessage) {
-            boolean tryDeliverMessage = true;
-            boolean deliveryFailed = true;
-
-            JooContext context = eventMessage.getMetaData().newContextFromMetadata();
-
+        private void deliverToEventHandlers(EventMessage eventMessage) {
             try {
-                while (tryDeliverMessage) {
-                    try {
-                        String typeName = eventMessage.getMetaData().getTypeName();
-                        EventListener eventListener = eventProcessor.getListenerRegister().getEventListener(typeName);
-                        if (eventListener == null) {
-                            throw new IllegalArgumentException(typeName);
-                        }
+                String typeName = eventMessage.getMetaData().getTypeName();
+                Set<EventHandler<? extends Message>> eventHandlers
+                        = eventProcessor.getEventHandlerRegister().getEventHandler(typeName);
+                ErrorHandler errorHandler
+                        = eventProcessor.getEventHandlerRegister().getErrorHandler();
 
-                        deliveryStarted(eventMessage, eventListener, context);
-
-                        // Leave the framework here: hand over execution to service-specific eventListener.
-                        eventListener.handle(eventMessage, context);
-                        deliveryFailed = false;
-
-                        break;
-                    } catch (Exception failure) {
-                        // Strategy decides: Should we retry to deliver the failed eventMessage?
-                        tryDeliverMessage = eventProcessor.getListenerRegister().getErrorHandler()
-                                .handleError(eventMessage, failure);
-                        deliveryFailed(eventMessage, failure, tryDeliverMessage);
-                    }
-                }
+                eventHandlers.forEach((eventHandler -> {
+                    deliverToEventHandler(eventMessage,
+                            eventHandler, errorHandler);
+                }));
             } finally {
                 // consume the eventMessage - even if delivery failed
                 markAsConsumed(eventMessage.getMetaData().getOffset());
-                deliveryEnded(eventMessage, deliveryFailed);
             }
+        }
 
+        private void deliverToEventHandler(EventMessage eventMessage,
+                                              EventHandler<? extends Message> eventHandler,
+                                              ErrorHandler errorHandler) {
+            JooContext context = eventMessage.getMetaData().newContextFromMetadata();
 
+            boolean deliveryFailed = false;
+            try {
+                if (eventHandler == null) {
+                    throw new IllegalArgumentException(eventMessage.getMetaData().getTypeName());
+                }
+                deliveryStarted(eventMessage, eventHandler, context);
+                // Leave the framework here: hand over execution to service-specific eventHandler.
+                eventHandler.handle(eventMessage, context);
+            } catch (Exception failure) {
+                deliveryFailed = true;
+                // Strategy decides: Should we retry to deliver the failed eventMessage?
+                errorHandler.handleError(eventMessage, eventHandler, failure);
+                deliveryFailed(eventMessage, eventHandler, failure);
+            } finally {
+                deliveryEnded(eventMessage, eventHandler, deliveryFailed);
+            }
         }
 
 
@@ -217,19 +222,25 @@ public final class PartitionProcessor {
         }
 
 
-        private void deliveryStarted(EventMessage message, EventListener handler, JooContext context) {
+        private void deliveryStarted(EventMessage message, EventHandler handler, JooContext context) {
             // TODO log, trace, metrics
             LOGGER.debug("deliveryStarted {}, {}, {}", message, handler.getClass().getName(), context);
         }
 
-        private void deliveryFailed(EventMessage message, Exception failure, boolean tryDeliverMessage) {
+        private void deliveryFailed(EventMessage message, EventHandler<? extends Message> failedEventHandler,
+                                    Exception failure) {
             // TODO log, metrics
-            LOGGER.warn("deliveryFailed {}", message, failure);
+            LOGGER.warn("deliveryFailed {}, event handler {}", message, failedEventHandler, failure);
         }
 
-        private void deliveryEnded(EventMessage message, boolean deliveryFailed) {
+        private void deliveryEnded(EventMessage message, EventHandler<? extends Message> failedEventHandler,
+                                   boolean deliveryFailed) {
             // TODO log, trace, metrics
-            LOGGER.debug("deliveryEnded {}", message);
+            if(!deliveryFailed) {
+                LOGGER.debug("deliveryEnded {}", message);
+                return;
+            }
+            LOGGER.error("deliveryEnded {}, failedEventHandler {}", message, failedEventHandler);
         }
     }
 
