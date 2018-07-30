@@ -1,6 +1,8 @@
-package com.github.dxee.joo.eventhandling;
+package com.github.dxee.joo.kafka.internal;
 
 import com.github.dxee.joo.JooContext;
+import com.github.dxee.joo.eventhandling.EventHandler;
+import com.github.dxee.joo.eventhandling.EventMessage;
 import com.google.common.base.Objects;
 import com.google.protobuf.Message;
 

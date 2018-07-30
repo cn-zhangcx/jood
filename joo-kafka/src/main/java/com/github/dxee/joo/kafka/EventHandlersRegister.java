@@ -1,6 +1,7 @@
 package com.github.dxee.joo.kafka;
 
 import com.github.dxee.joo.eventhandling.*;
+import com.github.dxee.joo.kafka.internal.EventHandlerWrapper;
 import com.google.common.reflect.TypeToken;
 import com.google.inject.spi.ProvisionListener;
 import com.google.protobuf.Message;
