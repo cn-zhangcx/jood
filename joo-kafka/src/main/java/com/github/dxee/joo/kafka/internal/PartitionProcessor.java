@@ -236,7 +236,7 @@ public final class PartitionProcessor {
         private void deliveryEnded(EventMessage message, EventHandler<? extends Message> failedEventHandler,
                                    boolean deliveryFailed) {
             // TODO log, trace, metrics
-            if(!deliveryFailed) {
+            if (!deliveryFailed) {
                 LOGGER.debug("deliveryEnded {}", message);
                 return;
             }

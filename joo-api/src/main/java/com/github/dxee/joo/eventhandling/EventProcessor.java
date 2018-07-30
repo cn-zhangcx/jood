@@ -10,7 +10,6 @@ public interface EventProcessor {
 
     /**
      *  Get the listener register of event processor
-     * @return
      */
     EventHandlerRegister getEventHandlerRegister();
 

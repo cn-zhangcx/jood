@@ -23,6 +23,7 @@ public interface EventHandler<T extends Message> {
      * @param eventMessage
      * @param context
      */
-    void handle(EventMessage<T> eventMessage, JooContext context) throws InvocationTargetException, IllegalAccessException;
+    void handle(EventMessage<T> eventMessage, JooContext context)
+            throws InvocationTargetException, IllegalAccessException;
 
 }

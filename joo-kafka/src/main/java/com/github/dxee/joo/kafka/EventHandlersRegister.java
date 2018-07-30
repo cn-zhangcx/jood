@@ -21,7 +21,7 @@ import static com.google.common.base.Preconditions.checkArgument;
  * 2018-07-02 14:20
  */
 public class EventHandlersRegister implements EventHandlerRegister, ProvisionListener {
-    private final Logger LOGGER = LoggerFactory.getLogger(EventHandlersRegister.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(EventHandlersRegister.class);
     // synchronized because put may be executed in different thread than read access
     // if synchronization is found too heavy for this, extract interface and implement
     // an immutable dictionary and another modifiable one
@@ -82,7 +82,7 @@ public class EventHandlersRegister implements EventHandlerRegister, ProvisionLis
                     eventHandlerWrappers.add(eventHandlerWrapper);
 
                     Parser<? extends Message> messageParser = eventMessageParsers.get(messageName);
-                    if(null == messageParser) {
+                    if (null == messageParser) {
                         eventMessageParsers.put(messageName, parser(messageClass));
                     }
                 }
@@ -98,8 +98,8 @@ public class EventHandlersRegister implements EventHandlerRegister, ProvisionLis
             return (Parser<Message>) parserMethod.invoke(null, (Object[]) null);
         } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException ignored) {
             // too noisy:
-             LOGGER.debug("Ignoring protobuf type {} as we cannot invoke static method parse().",
-                     TypeNames.of(clazz), ignored);
+            LOGGER.debug("Ignoring protobuf type {} as we cannot invoke static method parse().",
+                    TypeNames.of(clazz), ignored);
         }
         return null;
     }

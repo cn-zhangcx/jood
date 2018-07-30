@@ -40,8 +40,8 @@ public final class EventHandlerWrapper<T extends Message> implements EventHandle
 
         EventHandlerWrapper that = (EventHandlerWrapper) o;
 
-        return Objects.equal(object, that.object) &&
-                Objects.equal(method, that.method);
+        return Objects.equal(object, that.object)
+                && Objects.equal(method, that.method);
     }
 
     @Override
