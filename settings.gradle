@@ -4,4 +4,5 @@ include 'joo-api'
 include 'joo-jetty'
 include 'joo-kafka'
 include 'joo-metrics'
+include 'joo-test'
 

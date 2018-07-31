@@ -9,5 +9,6 @@ dependencies {
 
     compile "com.google.inject.extensions:guice-servlet:$versions.guice"
 
+    testCompile project(':joo-test')
     testCompile "io.rest-assured:rest-assured:$versions.restassured"
 }

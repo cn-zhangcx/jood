@@ -5,6 +5,8 @@ import com.github.dxee.dject.ext.ShutdownHookModule;
 import com.github.dxee.joo.JooContext;
 import com.github.dxee.joo.kafka.embedded.KafkaCluster;
 import com.github.dxee.joo.eventhandling.*;
+import com.github.dxee.joo.test.IntegrationTest;
+import com.github.dxee.joo.test.TestUtils;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Stage;
@@ -12,6 +14,7 @@ import com.google.inject.matcher.Matchers;
 import com.google.inject.name.Names;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -28,6 +31,7 @@ import static org.junit.Assert.assertTrue;
  * @author bing.fan
  * 2018-07-11 23:46
  */
+@Category(IntegrationTest.class)
 public class KafkaIntegrationTest {
     @Singleton
     public static class EventHandler1 {
@@ -69,8 +73,8 @@ public class KafkaIntegrationTest {
 
     @Test
     public void simple_producer_consumer() throws InterruptedException {
-        int zkPort = TestUtils.getAvailablePort();
-        int kafkaBrokerPort = TestUtils.getAvailablePort(zkPort);
+        int zkPort = TestUtils.freePort();
+        int kafkaBrokerPort = TestUtils.freePort(zkPort);
         KafkaCluster cluster = KafkaCluster.newBuilder()
                 .withZookeeper("127.0.0.1", zkPort)
                 .withBroker(1, "127.0.0.1", kafkaBrokerPort)

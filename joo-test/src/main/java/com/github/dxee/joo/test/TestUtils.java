@@ -1,4 +1,4 @@
-package com.github.dxee.joo.kafka;
+package com.github.dxee.joo.test;
 
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -11,7 +11,7 @@ import java.net.ServerSocket;
  */
 public class TestUtils {
 
-    public static int getAvailablePort() {
+    public static int freePort() {
         try (ServerSocket socket = new ServerSocket(0)) {
             return socket.getLocalPort();
         } catch (IOException e) {
@@ -20,8 +20,8 @@ public class TestUtils {
         }
     }
 
-    public static int getAvailablePort(int... excludePort) {
-        int port = getAvailablePort();
+    public static int freePort(int... excludePort) {
+        int port = freePort();
 
         boolean flag = false;
         for (int i = 0; i < excludePort.length; i++) {
@@ -34,7 +34,7 @@ public class TestUtils {
             return port;
         }
 
-        return getAvailablePort(excludePort);
+        return freePort(excludePort);
     }
 
 }

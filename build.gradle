@@ -65,6 +65,21 @@ subprojects {
         executionData = fileTree('build/jacoco').include('**/*.exec')
     }
 
+    test {
+        useJUnit {
+            excludeCategories "com.github.dxee.joo.test.IntegrationTest"
+        }
+    }
+
+    task integrationTest(type: Test) {
+        description "Run more heavyweight JUnit integration tests."
+        group "verification"
+        useJUnit {
+            includeCategories "com.sixt.service.framework.IntegrationTest"
+        }
+        shouldRunAfter test
+    }
+
     tasks.withType(Javadoc) {
         options.addStringOption('Xdoclint:none', '-quiet')
     }

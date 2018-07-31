@@ -2,6 +2,7 @@ package com.github.dxee.joo.jetty;
 
 import com.github.dxee.dject.Dject;
 import com.github.dxee.dject.ext.ShutdownHookModule;
+import com.github.dxee.joo.test.TestUtils;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
