@@ -181,10 +181,9 @@ public final class PartitionProcessor {
                 ErrorHandler errorHandler
                         = eventProcessor.getEventHandlerRegister().getErrorHandler();
 
-                eventHandlers.forEach((eventHandler -> {
-                    deliverToEventHandler(eventMessage,
-                            eventHandler, errorHandler);
-                }));
+                eventHandlers.forEach(eventHandler ->
+                        deliverToEventHandler(eventMessage, eventHandler, errorHandler)
+                );
             } finally {
                 // consume the eventMessage - even if delivery failed
                 markAsConsumed(eventMessage.getMetaData().getOffset());
@@ -192,8 +191,8 @@ public final class PartitionProcessor {
         }
 
         private void deliverToEventHandler(EventMessage<? extends Message> eventMessage,
-                                              EventHandler eventHandler,
-                                              ErrorHandler errorHandler) {
+                                           EventHandler eventHandler,
+                                           ErrorHandler errorHandler) {
             JooContext context = eventMessage.getMetaData().newContextFromMetadata();
 
             boolean deliveryFailed = false;
