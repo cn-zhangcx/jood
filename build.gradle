@@ -75,7 +75,7 @@ subprojects {
         description "Run more heavyweight JUnit integration tests."
         group "verification"
         useJUnit {
-            includeCategories "com.sixt.service.framework.IntegrationTest"
+            includeCategories "com.github.dxee.joo.test.IntegrationTest"
         }
         shouldRunAfter test
     }

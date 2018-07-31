@@ -2,12 +2,14 @@ package com.github.dxee.joo.jetty;
 
 import com.github.dxee.dject.Dject;
 import com.github.dxee.dject.ext.ShutdownHookModule;
+import com.github.dxee.joo.test.IntegrationTest;
 import com.github.dxee.joo.test.TestUtils;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -25,6 +27,7 @@ import static org.hamcrest.Matchers.equalTo;
  * @author bing.fan
  * 2018-07-11 11:55
  */
+@Category(IntegrationTest.class)
 public class JettyModuleTest {
 
     private static final String HELLO = "Hello ";
