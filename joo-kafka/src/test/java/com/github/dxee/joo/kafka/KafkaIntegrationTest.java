@@ -3,28 +3,19 @@ package com.github.dxee.joo.kafka;
 import com.github.dxee.dject.Dject;
 import com.github.dxee.dject.ext.ShutdownHookModule;
 import com.github.dxee.joo.JooContext;
-import com.github.dxee.joo.kafka.*;
-import com.github.dxee.joo.kafka.DiscardFailedMessages;
 import com.github.dxee.joo.kafka.embedded.KafkaCluster;
 import com.github.dxee.joo.eventhandling.*;
-import com.github.dxee.joo.kafka.EventHandlersRegister;
-import com.google.common.eventbus.Subscribe;
 import com.google.inject.AbstractModule;
-import com.google.inject.Key;
 import com.google.inject.Provides;
 import com.google.inject.Stage;
 import com.google.inject.matcher.Matchers;
 import com.google.inject.name.Names;
-import com.google.protobuf.Message;
-import com.google.protobuf.Parser;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.junit.Test;
 
 import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Singleton;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -39,12 +30,12 @@ import static org.junit.Assert.assertTrue;
  */
 public class KafkaIntegrationTest {
     @Singleton
-    public static class EventHanler1 {
+    public static class EventHandler1 {
         private final EventBus eventBus;
         private final CountDownLatch requestLatch;
 
         @Inject
-        public EventHanler1(EventBus eventBus, @Named("requestLatch")CountDownLatch requestLatch) {
+        public EventHandler1(EventBus eventBus, @Named("requestLatch")CountDownLatch requestLatch) {
             this.eventBus = eventBus;
             this.requestLatch = requestLatch;
         }
@@ -62,11 +53,11 @@ public class KafkaIntegrationTest {
     }
 
     @Singleton
-    public static class EventHanler2 {
+    public static class EventHandler2 {
         private final CountDownLatch responseLatch;
 
         @Inject
-        public EventHanler2(@Named("responseLatch")CountDownLatch responseLatch) {
+        public EventHandler2(@Named("responseLatch")CountDownLatch responseLatch) {
             this.responseLatch = responseLatch;
         }
 
@@ -103,8 +94,8 @@ public class KafkaIntegrationTest {
                 bind(EventHandlerRegister.class).toInstance(eventHandlersRegister);
                 bindListener(Matchers.any(), eventHandlersRegister);
 
-                bind(EventHanler1.class).asEagerSingleton();
-                bind(EventHanler2.class).asEagerSingleton();
+                bind(EventHandler1.class).asEagerSingleton();
+                bind(EventHandler2.class).asEagerSingleton();
 
                 bind(CountDownLatch.class).annotatedWith(Names.named("requestLatch")).toInstance(requestLatch);
                 bind(CountDownLatch.class).annotatedWith(Names.named("responseLatch")).toInstance(responseLatch);

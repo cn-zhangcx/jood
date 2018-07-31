@@ -36,7 +36,7 @@ subprojects {
             'dject'      : '1.1.0',
             'protobuf'   : '3.6.0',
             'metrics'    : '4.0.3',
-            'kafka'      : '1.1.1',
+            'kafka'      : '2.0.0',
             'servlet'    : '4.0.1',
             'jetty'      : '9.4.11.v20180605',
             'logback'    : '1.2.3',
@@ -45,8 +45,7 @@ subprojects {
             'junit'      : '4.12',
             'mockito'    : '2.19.1',
             'restassured': '3.1.0',
-            'assertj' : '3.10.0',
-            'kafkajunit4': '3.0.1'
+            'assertj' : '3.10.0'
     ]
 
     dependencies {
