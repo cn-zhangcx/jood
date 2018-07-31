@@ -1,6 +1,7 @@
 package com.github.dxee.joo.kafka;
 
 import com.github.dxee.dject.Dject;
+import com.github.dxee.dject.ext.ShutdownHookModule;
 import com.github.dxee.joo.JooContext;
 import com.github.dxee.joo.kafka.*;
 import com.github.dxee.joo.kafka.DiscardFailedMessages;
@@ -133,7 +134,7 @@ public class KafkaIntegrationTest {
                 KafProducer kafProducer = new KafProducer(properties);
                 return kafProducer;
             }
-        }).withStage(Stage.PRODUCTION).build();
+        }, new ShutdownHookModule()).withStage(Stage.PRODUCTION).build();
 
         // Key.get(EventProcessor.class, Names.named("replayEventProcessor"));
         EventBus eventBus = dject.getInstance(EventBus.class);
