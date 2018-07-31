@@ -15,7 +15,7 @@ import java.lang.reflect.Method;
  * @author bing.fan
  * 2018-07-10 10:24
  */
-public final class EventHandlerWrapper<T extends Message> implements EventHandler<T> {
+public final class EventHandlerWrapper implements EventHandler {
 
     private final Object object;
     private final Method method;
@@ -26,7 +26,7 @@ public final class EventHandlerWrapper<T extends Message> implements EventHandle
     }
 
     @Override
-    public void handle(EventMessage<T> eventMessage, JooContext context)
+    public void handle(EventMessage<? extends Message> eventMessage, JooContext context)
             throws InvocationTargetException, IllegalAccessException {
         method.invoke(object, eventMessage, context);
     }

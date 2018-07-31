@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
@@ -246,7 +247,7 @@ public class KafkaCluster {
         properties.put(ConsumerConfig.GROUP_ID_CONFIG, "group");
         try (Consumer<String, String> consumer = consumer(properties, deserializer, deserializer)) {
             consumer.subscribe(Arrays.asList("__consumer_offsets"));
-            consumer.poll(0);
+            consumer.poll(Duration.ofMillis(0));
         }
     }
 

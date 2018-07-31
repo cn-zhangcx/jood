@@ -11,7 +11,7 @@ import java.lang.reflect.InvocationTargetException;
  * @author bing.fan
  * 2018-07-06 18:37
  */
-public interface EventHandler<T extends Message> {
+public interface EventHandler {
 
     /**
      * Callback interface to hand over a event.
@@ -23,7 +23,7 @@ public interface EventHandler<T extends Message> {
      * @param eventMessage
      * @param context
      */
-    void handle(EventMessage<T> eventMessage, JooContext context)
+    void handle(EventMessage<? extends Message> eventMessage, JooContext context)
             throws InvocationTargetException, IllegalAccessException;
 
 }

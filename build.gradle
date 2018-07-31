@@ -1,15 +1,18 @@
 buildscript {
     repositories {
         mavenCentral()
+        jcenter()
     }
     dependencies {
         classpath 'com.vanniktech:gradle-maven-publish-plugin:0.4.0'
+        classpath "com.github.ben-manes:gradle-versions-plugin:0.20.0"
     }
 }
 
 subprojects {
     apply plugin: 'java'
     apply plugin: 'jacoco'
+    apply plugin: 'com.github.ben-manes.versions'
     apply plugin: 'com.vanniktech.maven.publish'
     apply from: rootProject.file('gradle/checkstyle.gradle')
 
@@ -43,7 +46,7 @@ subprojects {
             'slf4j'      : '1.7.25',
 
             'junit'      : '4.12',
-            'mockito'    : '2.19.1',
+            'mockito'    : '2.21.0',
             'restassured': '3.1.0',
             'assertj' : '3.10.0'
     ]
@@ -78,6 +81,27 @@ subprojects {
             includeCategories "com.github.dxee.joo.test.IntegrationTest"
         }
         shouldRunAfter test
+    }
+
+    check.dependsOn integrationTest
+
+    compileJava {
+        options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
+    }
+
+    build.dependsOn dependencyUpdates
+
+    dependencyUpdates.resolutionStrategy = {
+        componentSelection { rules ->
+            rules.all { ComponentSelection selection ->
+                boolean rejected = ['alpha', 'beta', 'rc', 'cr', 'm'].any { qualifier ->
+                    selection.candidate.version ==~ /(?i).*[.-]${qualifier}[.\d-]*/
+                }
+                if (rejected) {
+                    selection.reject('Release candidate')
+                }
+            }
+        }
     }
 
     tasks.withType(Javadoc) {

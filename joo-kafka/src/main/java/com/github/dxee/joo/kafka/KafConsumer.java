@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
+import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -129,7 +130,9 @@ public class KafConsumer implements EventProcessor {
                     try {
                         // Note that poll() may also execute the ConsumerRebalanceListener
                         // callbacks and may take substantially more time to return.
-                        ConsumerRecords<String, byte[]> records = kafkaConsumer.poll(POLL_INTERVAL_MILLIS);
+                        ConsumerRecords<String, byte[]> records = kafkaConsumer.poll(
+                                Duration.ofMillis(POLL_INTERVAL_MILLIS)
+                        );
 
                         assignedPartitions.enqueue(records);
                         kafkaConsumer.commitSync(assignedPartitions.offsetsToBeCommitted());

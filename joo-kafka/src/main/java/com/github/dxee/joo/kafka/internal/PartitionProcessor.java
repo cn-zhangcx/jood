@@ -173,10 +173,10 @@ public final class PartitionProcessor {
         }
 
         @SuppressWarnings("unchecked")
-        private void deliverToEventHandlers(EventMessage eventMessage) {
+        private void deliverToEventHandlers(EventMessage<? extends Message> eventMessage) {
             try {
                 String typeName = eventMessage.getMetaData().getTypeName();
-                Set<EventHandler<? extends Message>> eventHandlers
+                Set<EventHandler> eventHandlers
                         = eventProcessor.getEventHandlerRegister().getEventHandler(typeName);
                 ErrorHandler errorHandler
                         = eventProcessor.getEventHandlerRegister().getErrorHandler();
@@ -191,8 +191,8 @@ public final class PartitionProcessor {
             }
         }
 
-        private void deliverToEventHandler(EventMessage eventMessage,
-                                              EventHandler<? extends Message> eventHandler,
+        private void deliverToEventHandler(EventMessage<? extends Message> eventMessage,
+                                              EventHandler eventHandler,
                                               ErrorHandler errorHandler) {
             JooContext context = eventMessage.getMetaData().newContextFromMetadata();
 
@@ -227,13 +227,13 @@ public final class PartitionProcessor {
             LOGGER.debug("deliveryStarted {}, {}, {}", message, handler.getClass().getName(), context);
         }
 
-        private void deliveryFailed(EventMessage message, EventHandler<? extends Message> failedEventHandler,
+        private void deliveryFailed(EventMessage message, EventHandler failedEventHandler,
                                     Exception failure) {
             // TODO log, metrics
             LOGGER.warn("deliveryFailed {}, event handler {}", message, failedEventHandler, failure);
         }
 
-        private void deliveryEnded(EventMessage message, EventHandler<? extends Message> failedEventHandler,
+        private void deliveryEnded(EventMessage message, EventHandler failedEventHandler,
                                    boolean deliveryFailed) {
             // TODO log, trace, metrics
             if (!deliveryFailed) {

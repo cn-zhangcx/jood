@@ -26,7 +26,7 @@ public class EventHandlersRegister implements EventHandlerRegister, ProvisionLis
     // synchronized because put may be executed in different thread than read access
     // if synchronization is found too heavy for this, extract interface and implement
     // an immutable dictionary and another modifiable one
-    private final Map<String, Set<EventHandler<? extends Message>>> eventHandlers
+    private final Map<String, Set<EventHandler>> eventHandlers
             = Collections.synchronizedMap(new HashMap<>());
     private final Map<String, Parser<? extends Message>> eventMessageParsers
             = Collections.synchronizedMap(new HashMap<>());
@@ -37,7 +37,7 @@ public class EventHandlersRegister implements EventHandlerRegister, ProvisionLis
     }
 
     @Override
-    public Set<EventHandler<? extends Message>> getEventHandler(String typeName) {
+    public Set<EventHandler> getEventHandler(String typeName) {
         return eventHandlers.get(typeName);
     }
 
@@ -74,7 +74,7 @@ public class EventHandlersRegister implements EventHandlerRegister, ProvisionLis
                     Class<? extends Message> messageClass = method.getAnnotation(EventSubscribe.class).value();
                     String messageName = TypeNames.of(messageClass);
 
-                    Set<EventHandler<? extends Message>> eventHandlerWrappers = eventHandlers.get(messageName);
+                    Set<EventHandler> eventHandlerWrappers = eventHandlers.get(messageName);
                     if (null == eventHandlerWrappers) {
                         eventHandlerWrappers = new HashSet<>();
                         eventHandlers.put(messageName, eventHandlerWrappers);
@@ -91,6 +91,7 @@ public class EventHandlersRegister implements EventHandlerRegister, ProvisionLis
         }
     }
 
+    @SuppressWarnings("unchecked")
     private Parser<? extends Message> parser(Class<?> clazz) {
         try {
             // static method, no arguments

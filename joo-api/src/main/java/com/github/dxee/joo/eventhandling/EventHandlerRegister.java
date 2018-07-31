@@ -12,7 +12,7 @@ import java.util.Set;
  * 2018-07-02 14:04
  */
 public interface EventHandlerRegister {
-    Set<EventHandler<? extends Message>> getEventHandler(String typeName);
+    Set<EventHandler> getEventHandler(String typeName);
 
     ErrorHandler getErrorHandler();
 
