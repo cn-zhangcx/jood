@@ -13,6 +13,8 @@ import com.google.inject.Stage;
 import com.google.inject.matcher.Matchers;
 import com.google.inject.name.Names;
 import org.apache.kafka.clients.CommonClientConfigs;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -33,6 +35,27 @@ import static org.junit.Assert.assertTrue;
  */
 @Category(IntegrationTest.class)
 public class KafkaIntegrationTest {
+    static int zkPort = -1;
+    static int kafkaBrokerPort = -1;
+    static KafkaCluster cluster = null;
+
+    @BeforeClass
+    public static void setUp() {
+        zkPort = TestUtils.freePort();
+        kafkaBrokerPort = TestUtils.freePort(zkPort);
+
+        cluster = KafkaCluster.newBuilder()
+                .withZookeeper("127.0.0.1", zkPort)
+                .withBroker(1, "127.0.0.1", kafkaBrokerPort)
+                .build();
+        cluster.start();
+    }
+
+    @AfterClass
+    public static void tearDown() throws InterruptedException {
+        cluster.shutdown();
+    }
+
     @Singleton
     public static class EventHandler1 {
         private final EventBus eventBus;
@@ -73,16 +96,8 @@ public class KafkaIntegrationTest {
 
     @Test
     public void simple_producer_consumer() throws InterruptedException {
-        int zkPort = TestUtils.freePort();
-        int kafkaBrokerPort = TestUtils.freePort(zkPort);
-        KafkaCluster cluster = KafkaCluster.newBuilder()
-                .withZookeeper("127.0.0.1", zkPort)
-                .withBroker(1, "127.0.0.1", kafkaBrokerPort)
-                .build();
-
-        cluster.start();
-        cluster.createTopic("ping", 2);
-        cluster.createTopic("pong", 2);
+        cluster.createTopic("ping", 1);
+        cluster.createTopic("pong", 1);
 
         String ping = "ping";
         String pong = "pong";
@@ -135,7 +150,7 @@ public class KafkaIntegrationTest {
         EventBus eventBus = dject.getInstance(EventBus.class);
         for (int i = 0; i < N; i++) {
             SayHelloToCmd cmd = SayHelloToCmd.newBuilder().setName(Integer.toString(i)).build();
-            EventMessage request = EventMessages.requestFor(ping, pong, "1", cmd, new JooContext());
+            EventMessage request = EventMessages.requestFor(ping, pong, null, cmd, new JooContext());
             eventBus.publish(request);
         }
 

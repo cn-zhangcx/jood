@@ -13,25 +13,25 @@ import static com.github.dxee.joo.kafka.consumer.KafConsumerConfigValidator.*;
 import static org.apache.kafka.clients.consumer.ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG;
 
 @RunWith(MockitoJUnitRunner.class)
-public class KafkaConfigValidatorTest {
+public class KafConsumerConfigValidatorTest {
     private Properties testProps;
 
     @Rule
     public ExpectedException expected = ExpectedException.none();
 
     @Before
-    public void setUp() throws Exception {
+    public void setUp() {
         testProps = new Properties();
         testProps.setProperty(ENABLE_AUTO_COMMIT_CONFIG, "false");
     }
 
     @Test
-    public void is_validate() throws Exception {
+    public void is_validate() {
         validate(testProps);
     }
 
     @Test
-    public void autoCommit_true() throws Exception {
+    public void autoCommit_true() {
         expected.expect(IllegalArgumentException.class);
         expected.expectMessage(AUTO_COMMIT_ENABLED_MSG);
 
@@ -40,7 +40,7 @@ public class KafkaConfigValidatorTest {
     }
 
     @Test
-    public void properties_null() throws Exception {
+    public void properties_null() {
         expected.expect(IllegalArgumentException.class);
         expected.expectMessage(NULL_PROPS_MESSAGE);
 
