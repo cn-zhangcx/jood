@@ -1,0 +1,142 @@
+package com.github.dxee.joo.kafka.consumer;
+
+import com.google.common.util.concurrent.MoreExecutors;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.TopicPartition;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.function.Supplier;
+
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.apache.kafka.clients.consumer.ConsumerConfig.AUTO_OFFSET_RESET_CONFIG;
+import static org.apache.kafka.clients.consumer.ConsumerConfig.CLIENT_ID_CONFIG;
+
+/**
+ * This class leverages the kafka-clients consumer implementation to distribute messages from assigned partitions to
+ * {@link java.util.concurrent.BlockingQueue}s. Each assigned partition will relay its messages to its own queue.
+ * In addition, each queue has a consuming process/thread. Once a message has been "processed" successfully its offset
+ * will be marked to be committed.
+ *
+ * @param <K> Key type
+ * @param <V> Value type
+ *
+ * @author bing.fan
+ * 2018-08-02 14:18
+ */
+public class KafConsumer<K, V> implements ConsumerRebalanceListener {
+    private static final Logger LOGGER = LoggerFactory.getLogger(KafConsumer.class);
+
+    private final Properties kafkaConfig;
+    private final String topic;
+    private final int queueSize;
+    private final KafRecordConsumer<ConsumerRecord<K, V>> action;
+
+    private final Map<Integer, PartitionProcessor<K, V>> processors = new ConcurrentHashMap<>();
+    private final ExecutorService threadPool;
+    private final Consumer<K, V> consumer;
+
+    private final Object lock = new Object();
+    private volatile ConsumerRecordRelay<K, V> relay;
+
+    public KafConsumer(String topic, Properties kafkaConfig, int queueSize,
+                       KafRecordConsumer<ConsumerRecord<K, V>> action) {
+        this.topic = topic;
+        this.kafkaConfig = KafConsumerConfigValidator.validate(kafkaConfig);
+        this.action = action;
+        this.queueSize = queueSize;
+        this.threadPool = Executors.newCachedThreadPool();
+        this.consumer = createKafkaConsumer();
+    }
+
+    public void start() {
+        synchronized (lock) {
+            if (relay != null) {
+                throw new IllegalStateException("Consumer already started");
+            }
+
+            consumer.subscribe(Collections.singletonList(topic), this);
+
+            relay = new ConsumerRecordRelay<>(consumer, this);
+            new Thread(relay, "kaf-relay-" + topic).start();
+        }
+    }
+
+    public void stop() {
+        synchronized (lock) {
+            if (relay == null) {
+                throw new IllegalStateException("Consumer not started, nothing to stop");
+            }
+            relay.stop();
+            if (!MoreExecutors.shutdownAndAwaitTermination(threadPool, 10, SECONDS)) {
+                LOGGER.error("Pool was not terminated properly.");
+            }
+        }
+    }
+
+    void relay(ConsumerRecord<K, V> record) throws InterruptedException {
+        if (!topic.equals(record.topic())) {
+            throw new ConsumerException(String.format("Message from unexpected topic: '%s'", record.topic()));
+        }
+        PartitionProcessor<K, V> partitionProcessor = processors.get(record.partition());
+        if (null == partitionProcessor) {
+            partitionProcessor = createProcessor(new TopicPartition(record.topic(), record.partition()));
+        }
+
+        partitionProcessor.queue(record);
+    }
+
+    private PartitionProcessor<K, V> createProcessor(TopicPartition partition) {
+        PartitionProcessor<K, V> partitionProcessor = new PartitionProcessor<>(partition, relay, action, queueSize);
+
+        threadPool.execute(partitionProcessor);
+        processors.put(partition.partition(), partitionProcessor);
+
+        return partitionProcessor;
+    }
+
+    private Consumer<K, V> createKafkaConsumer() {
+        setDefaultPropertyIfNotPresent(kafkaConfig, CLIENT_ID_CONFIG, this::getClientId);
+        setDefaultPropertyIfNotPresent(kafkaConfig, AUTO_OFFSET_RESET_CONFIG, () -> "earliest");
+        return new KafkaConsumer<K, V>(kafkaConfig);
+    }
+
+    private void setDefaultPropertyIfNotPresent(Properties props, String propertyName, Supplier<String> defaultValue) {
+        if (props.contains(propertyName)) {
+            return;
+        }
+        props.put(propertyName, defaultValue.get());
+    }
+
+    private String getClientId() {
+        try {
+            return String.format("%s-%s", InetAddress.getLocalHost().getHostName(), topic);
+        } catch (UnknownHostException ex) {
+            throw new ConsumerException("Could not retrieve client identifier", ex);
+        }
+    }
+
+    @Override
+    public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+        partitions.forEach(this::createProcessor);
+    }
+
+    @Override
+    public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+        partitions.forEach(partition -> {
+            PartitionProcessor<K, V> partitionProcessor = processors.get(partition.partition());
+            partitionProcessor.stop();
+            processors.remove(partition.partition());
+            relay.removePartitionFromOffset(partition);
+        });
+    }
+}

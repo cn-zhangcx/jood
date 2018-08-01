@@ -126,8 +126,8 @@ public class KafkaIntegrationTest {
             public EventBus eventBus() {
                 Properties properties = new Properties();
                 properties.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, "127.0.0.1:" + kafkaBrokerPort);
-                KafProducer kafProducer = new KafProducer(properties);
-                return kafProducer;
+                KafkaPublisher kafkaPublisher = new KafkaPublisher(properties);
+                return kafkaPublisher;
             }
         }, new ShutdownHookModule()).withStage(Stage.PRODUCTION).build();
 
@@ -147,7 +147,7 @@ public class KafkaIntegrationTest {
                                            EventHandlerRegister eventHandlerRegister) {
         String consumerGroupId = defaultConsumerGroupId(topic);
 
-        EventProcessor eventProcessor = new KafConsumer(topic, consumerGroupId, defaultKafkaConfig(port),
+        EventProcessor eventProcessor = new KafkaProcessor(topic, consumerGroupId, defaultKafkaConfig(port),
                 eventHandlerRegister);
 
         return eventProcessor;
