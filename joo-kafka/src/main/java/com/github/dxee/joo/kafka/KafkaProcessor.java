@@ -39,7 +39,7 @@ public class KafkaProcessor implements EventProcessor {
         consumerProperties.put("value.deserializer", ByteArrayDeserializer.class.getName());
 
         kafConsumer = new KafConsumer<>(topic, consumerProperties, 1024,
-                new RecordConsumer());
+                new KafkaRecordConsumer());
         this.eventHandlerRegister = eventHandlerRegister;
     }
 
@@ -60,7 +60,7 @@ public class KafkaProcessor implements EventProcessor {
         return eventHandlerRegister;
     }
 
-    class RecordConsumer implements KafRecordConsumer<ConsumerRecord<String, byte[]>> {
+    class KafkaRecordConsumer implements KafRecordConsumer<ConsumerRecord<String, byte[]>> {
 
         @Override
         public void accept(ConsumerRecord<String, byte[]> record) {
