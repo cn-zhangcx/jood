@@ -37,7 +37,7 @@ subprojects {
     ext.versions = [
             'guice'         : '4.2.0',
             'dject'         : '1.1.0',
-            'protobuf'      : '3.6.0',
+            'protobuf'      : '3.6.1',
             'metrics'       : '4.0.3',
             'kafka'         : '2.0.0',
             'servlet'       : '4.0.1',

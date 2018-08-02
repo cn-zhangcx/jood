@@ -7,5 +7,9 @@ package com.github.dxee.joo.kafka.consumer;
  * 2018-08-02 14:45
  */
 public interface KafRecordConsumer<T> {
+    /**
+     * Accept the record, should not throw any exception.
+     * @param t
+     */
     void accept(T t);
 }

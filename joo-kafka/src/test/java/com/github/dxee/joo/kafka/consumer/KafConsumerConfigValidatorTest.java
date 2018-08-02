@@ -4,6 +4,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
+import org.junit.rules.TestName;
 import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnitRunner;
 
@@ -18,6 +19,16 @@ public class KafConsumerConfigValidatorTest {
 
     @Rule
     public ExpectedException expected = ExpectedException.none();
+
+    @Rule
+    public TestName name = new TestName();
+
+    @Before
+    public void printTestHeader() {
+        System.out.println("\n=======================================================");
+        System.out.println("  Running Test : " + name.getMethodName());
+        System.out.println("=======================================================\n");
+    }
 
     @Before
     public void setUp() {

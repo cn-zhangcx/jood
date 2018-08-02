@@ -13,10 +13,9 @@ import com.google.inject.Stage;
 import com.google.inject.matcher.Matchers;
 import com.google.inject.name.Names;
 import org.apache.kafka.clients.CommonClientConfigs;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.*;
 import org.junit.experimental.categories.Category;
+import org.junit.rules.TestName;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -54,6 +53,16 @@ public class KafkaIntegrationTest {
     @AfterClass
     public static void tearDown() throws InterruptedException {
         cluster.shutdown();
+    }
+
+    @Rule
+    public TestName name = new TestName();
+
+    @Before
+    public void printTestHeader() {
+        System.out.println("\n=======================================================");
+        System.out.println("  Running Test : " + name.getMethodName());
+        System.out.println("=======================================================\n");
     }
 
     @Singleton

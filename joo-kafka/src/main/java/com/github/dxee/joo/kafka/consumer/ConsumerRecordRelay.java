@@ -40,7 +40,7 @@ class ConsumerRecordRelay<K, V> implements Runnable {
             consumer.poll(POLL_BLOCK_MILLIS).forEach(this::relayRecordToConsumerHandlingErrors);
             commitOffsets();
         }
-        this.consumer.close();
+        consumer.close();
         LOGGER.info("Kafka message relay stopped");
     }
 

@@ -4,7 +4,10 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
+import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestName;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
@@ -28,6 +31,16 @@ public class ConsumerRecordRelayTest {
     private KafConsumer<Integer, String> kafConsumer;
 
     private ConsumerRecord<Integer, String> record = new ConsumerRecord<>("testTopic", 1, 42, 1234, "SomeValue");
+
+    @Rule
+    public TestName name = new TestName();
+
+    @Before
+    public void printTestHeader() {
+        System.out.println("\n=======================================================");
+        System.out.println("  Running Test : " + name.getMethodName());
+        System.out.println("=======================================================\n");
+    }
 
     @Test
     public void relay_and_commitOffset() throws Exception {

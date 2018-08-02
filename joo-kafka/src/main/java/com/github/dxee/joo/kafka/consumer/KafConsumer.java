@@ -61,9 +61,11 @@ public class KafConsumer<K, V> implements ConsumerRebalanceListener {
     public void start() {
         synchronized (lock) {
             if (relay != null) {
-                throw new IllegalStateException("Consumer already started");
+                LOGGER.error("Consumer already started");
+                return;
             }
 
+            // Connects to the kafka
             consumer.subscribe(Collections.singletonList(topic), this);
 
             relay = new ConsumerRecordRelay<>(consumer, this);
@@ -74,7 +76,8 @@ public class KafConsumer<K, V> implements ConsumerRebalanceListener {
     public void stop() {
         synchronized (lock) {
             if (relay == null) {
-                throw new IllegalStateException("Consumer not started, nothing to stop");
+                LOGGER.error("Consumer not started, nothing to stop");
+                return;
             }
             relay.stop();
             if (!MoreExecutors.shutdownAndAwaitTermination(threadPool, 10, SECONDS)) {
@@ -85,23 +88,23 @@ public class KafConsumer<K, V> implements ConsumerRebalanceListener {
 
     void relay(ConsumerRecord<K, V> record) throws InterruptedException {
         if (!topic.equals(record.topic())) {
-            throw new ConsumerException(String.format("Message from unexpected topic: '%s'", record.topic()));
+            throw new ConsumerException(String.format("Message from unexpected topic %s", record.topic()));
         }
-        PartitionProcessor<K, V> partitionProcessor = processors.get(record.partition());
-        if (null == partitionProcessor) {
-            partitionProcessor = createProcessor(new TopicPartition(record.topic(), record.partition()));
+        PartitionProcessor<K, V> processor = processors.get(record.partition());
+
+        if(processor.isStopped()) {
+            throw new ConsumerException(String.format("Message processor is stopped, could not proccess data %s-%s",
+                    record.topic(), record.partition()));
         }
 
-        partitionProcessor.queue(record);
+        processor.queue(record);
     }
 
-    private PartitionProcessor<K, V> createProcessor(TopicPartition partition) {
+    private void createProcessor(TopicPartition partition) {
         PartitionProcessor<K, V> partitionProcessor = new PartitionProcessor<>(partition, relay, action, queueSize);
 
         threadPool.execute(partitionProcessor);
         processors.put(partition.partition(), partitionProcessor);
-
-        return partitionProcessor;
     }
 
     private Consumer<K, V> createKafkaConsumer() {

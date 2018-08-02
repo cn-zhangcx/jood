@@ -9,7 +9,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
 /**
- * Do the partitioned record consume Here, will stop when exception throws by action
+ * Do the partitioned record consume here, will stop when exception throws by action
  *
  * @author bing.fan
  * 2018-08-02 14:30

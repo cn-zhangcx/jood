@@ -3,13 +3,12 @@ package com.github.dxee.joo.kafka.consumer;
 import com.github.dxee.joo.kafka.embedded.KafkaCluster;
 import com.github.dxee.joo.test.IntegrationTest;
 import com.github.dxee.joo.test.TestUtils;
+import net.bytebuddy.utility.RandomString;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.serialization.StringDeserializer;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.*;
 import org.junit.experimental.categories.Category;
+import org.junit.rules.TestName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,7 +22,7 @@ import static org.awaitility.Awaitility.await;
 @Category(IntegrationTest.class)
 public class KafConsumerIntegrationTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(KafConsumerIntegrationTest.class);
-    private static final int NUMBER_OF_MESSAGES = 2;
+    private static final int NUMBER_OF_MESSAGES = 2000;
     private static final String TEST_GROUP = "TestGroup";
 
     private Properties props;
@@ -49,11 +48,22 @@ public class KafConsumerIntegrationTest {
         cluster.shutdown();
     }
 
+    @Rule
+    public TestName name = new TestName();
+
+    @Before
+    public void printTestHeader() {
+        System.out.println("\n=======================================================");
+        System.out.println("  Running Test : " + name.getMethodName());
+        System.out.println("=======================================================\n");
+    }
+
     @Before
     public void setUpTest() {
         props = new Properties();
         props.setProperty(BOOTSTRAP_SERVERS_CONFIG, "127.0.0.1:" + kafkaBrokerPort);
         props.setProperty(GROUP_ID_CONFIG, TEST_GROUP);
+        props.setProperty(AUTO_OFFSET_RESET_CONFIG, "earliest");
         props.setProperty(KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         props.setProperty(VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
     }
@@ -77,7 +87,34 @@ public class KafConsumerIntegrationTest {
             testProducer.send(String.valueOf(i));
         }
 
-        await().atMost(1, SECONDS).until(() -> messageCounter.get() == NUMBER_OF_MESSAGES);
+        await().atMost(5, SECONDS).until(() -> messageCounter.get() == NUMBER_OF_MESSAGES);
+        testProducer.close();
+        consumer.stop();
+    }
+
+    @Test
+    public void send_and_receive_with_exception() throws Exception {
+        final String topic = "bad_consumer_topic";
+        cluster.createTopic(topic, 1);
+
+        AtomicInteger messageCounter = new AtomicInteger(NUMBER_OF_MESSAGES);
+        KafRecordConsumer<ConsumerRecord<String, String>> action0 = (message) -> {
+            messageCounter.decrementAndGet();
+            throw new RuntimeException("Bad consumer");
+        };
+
+        KafConsumer<String, String> consumer = new KafConsumer<>(topic, props, 42, action0);
+        consumer.start();
+
+        SimpleTestProducer testProducer = new SimpleTestProducer("Lorem-Radio", topic,
+                "127.0.0.1:" + kafkaBrokerPort);
+        LOGGER.info("Sending {} messages", NUMBER_OF_MESSAGES);
+
+        for (int i = 0; i < NUMBER_OF_MESSAGES; i++) {
+            testProducer.send(String.valueOf(i));
+        }
+
+        await().atMost(5, SECONDS).until(() -> messageCounter.get() < NUMBER_OF_MESSAGES);
         testProducer.close();
         consumer.stop();
     }
