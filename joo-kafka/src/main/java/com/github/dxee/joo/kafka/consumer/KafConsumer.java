@@ -20,6 +20,7 @@ import java.util.function.Supplier;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.apache.kafka.clients.consumer.ConsumerConfig.AUTO_OFFSET_RESET_CONFIG;
 import static org.apache.kafka.clients.consumer.ConsumerConfig.CLIENT_ID_CONFIG;
+import static org.apache.kafka.clients.consumer.ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG;
 
 /**
  * This class leverages the kafka-clients consumer implementation to distribute messages from assigned partitions to
@@ -42,7 +43,7 @@ public class KafConsumer<K, V> implements ConsumerRebalanceListener {
     private final KafRecordConsumer<ConsumerRecord<K, V>> action;
 
     private final Map<Integer, PartitionProcessor<K, V>> processors = new ConcurrentHashMap<>();
-    private final ExecutorService threadPool;
+    private final ExecutorService pool;
     private final Consumer<K, V> consumer;
 
     private final Object lock = new Object();
@@ -54,7 +55,7 @@ public class KafConsumer<K, V> implements ConsumerRebalanceListener {
         this.kafkaConfig = KafConsumerConfigValidator.validate(kafkaConfig);
         this.action = action;
         this.queueSize = queueSize;
-        this.threadPool = Executors.newCachedThreadPool();
+        this.pool = Executors.newCachedThreadPool();
         this.consumer = createKafkaConsumer();
     }
 
@@ -80,7 +81,7 @@ public class KafConsumer<K, V> implements ConsumerRebalanceListener {
                 return;
             }
             relay.stop();
-            if (!MoreExecutors.shutdownAndAwaitTermination(threadPool, 10, SECONDS)) {
+            if (!MoreExecutors.shutdownAndAwaitTermination(pool, 10, SECONDS)) {
                 LOGGER.error("Pool was not terminated properly.");
             }
         }
@@ -93,8 +94,8 @@ public class KafConsumer<K, V> implements ConsumerRebalanceListener {
         PartitionProcessor<K, V> processor = processors.get(record.partition());
 
         if(processor.isStopped()) {
-            throw new ConsumerException(String.format("Message processor is stopped, could not proccess data %s-%s",
-                    record.topic(), record.partition()));
+            throw new ConsumerException(String.format("Message processor is stopped, could not consume record %s",
+                    record));
         }
 
         processor.queue(record);
@@ -103,12 +104,13 @@ public class KafConsumer<K, V> implements ConsumerRebalanceListener {
     private void createProcessor(TopicPartition partition) {
         PartitionProcessor<K, V> partitionProcessor = new PartitionProcessor<>(partition, relay, action, queueSize);
 
-        threadPool.execute(partitionProcessor);
+        pool.execute(partitionProcessor);
         processors.put(partition.partition(), partitionProcessor);
     }
 
     private Consumer<K, V> createKafkaConsumer() {
         setDefaultPropertyIfNotPresent(kafkaConfig, CLIENT_ID_CONFIG, this::getClientId);
+        setDefaultPropertyIfNotPresent(kafkaConfig, ENABLE_AUTO_COMMIT_CONFIG, () -> "false");
         setDefaultPropertyIfNotPresent(kafkaConfig, AUTO_OFFSET_RESET_CONFIG, () -> "earliest");
         return new KafkaConsumer<K, V>(kafkaConfig);
     }

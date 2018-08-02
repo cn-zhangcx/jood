@@ -37,16 +37,19 @@ class PartitionProcessor<K, V> implements Runnable {
     public void run() {
         Thread.currentThread().setName("kaf-processor-" + topicPartition.toString());
         LOGGER.info("PartitionProcessor for {} started", topicPartition);
+
+        ConsumerRecord<K, V> record = null;
         try {
             while (!stopped) {
-                ConsumerRecord<K, V> record = queue.take();
+                record = queue.take();
                 action.accept(record);
                 relay.setOffset(record);
             }
         } catch (InterruptedException ignored) {
             LOGGER.debug("PartitionProcessor for {} interrupted while waiting for messages", topicPartition);
         } catch (Exception ex) {
-            LOGGER.error("Exception during processing {}. Stopping!", topicPartition, ex);
+            LOGGER.error("Exception during processing topic partition {}, consumer record {}. Stopping!",
+                    topicPartition, record, ex);
         }
         stop();
         queue.clear();

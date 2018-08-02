@@ -82,10 +82,12 @@ class ConsumerRecordRelay<K, V> implements Runnable {
         stopped = true;
     }
 
-    private void callback(Map<TopicPartition, OffsetAndMetadata> offset, Exception ex) {
+    private void callback(Map<TopicPartition, OffsetAndMetadata> offsets, Exception ex) {
+        Joiner.MapJoiner mapJoiner = Joiner.on(',').withKeyValueSeparator("=");
         if (ex != null) {
-            Joiner.MapJoiner mapJoiner = Joiner.on(',').withKeyValueSeparator("=");
-            LOGGER.error("Error during offset commit: '{}'", mapJoiner.join(offset), ex);
+            LOGGER.error("Error during offsets commit: '{}'", mapJoiner.join(offsets), ex);
+        } else {
+            LOGGER.trace("Commit offsets successfully, {}", mapJoiner.join(offsets));
         }
     }
 }

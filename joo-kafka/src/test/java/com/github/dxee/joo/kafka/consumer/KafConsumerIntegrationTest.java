@@ -3,7 +3,6 @@ package com.github.dxee.joo.kafka.consumer;
 import com.github.dxee.joo.kafka.embedded.KafkaCluster;
 import com.github.dxee.joo.test.IntegrationTest;
 import com.github.dxee.joo.test.TestUtils;
-import net.bytebuddy.utility.RandomString;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.*;
@@ -13,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Properties;
+import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -81,7 +81,6 @@ public class KafConsumerIntegrationTest {
 
         SimpleTestProducer testProducer = new SimpleTestProducer("Lorem-Radio", topic,
                 "127.0.0.1:" + kafkaBrokerPort);
-        LOGGER.info("Sending {} messages", NUMBER_OF_MESSAGES);
 
         for (int i = 0; i < NUMBER_OF_MESSAGES; i++) {
             testProducer.send(String.valueOf(i));
@@ -97,10 +96,18 @@ public class KafConsumerIntegrationTest {
         final String topic = "bad_consumer_topic";
         cluster.createTopic(topic, 1);
 
-        AtomicInteger messageCounter = new AtomicInteger(NUMBER_OF_MESSAGES);
+        int errorMessage = new Random().nextInt(NUMBER_OF_MESSAGES);
+
+        AtomicInteger messageCounter = new AtomicInteger();
         KafRecordConsumer<ConsumerRecord<String, String>> action0 = (message) -> {
-            messageCounter.decrementAndGet();
-            throw new RuntimeException("Bad consumer");
+            if (String.valueOf(errorMessage).equals(message.value())) {
+                throw new RuntimeException("Bad consumer");
+            }
+            messageCounter.incrementAndGet();
+        };
+
+        KafRecordConsumer<ConsumerRecord<String, String>> action1 = (message) -> {
+            messageCounter.incrementAndGet();
         };
 
         KafConsumer<String, String> consumer = new KafConsumer<>(topic, props, 42, action0);
@@ -108,15 +115,80 @@ public class KafConsumerIntegrationTest {
 
         SimpleTestProducer testProducer = new SimpleTestProducer("Lorem-Radio", topic,
                 "127.0.0.1:" + kafkaBrokerPort);
-        LOGGER.info("Sending {} messages", NUMBER_OF_MESSAGES);
 
         for (int i = 0; i < NUMBER_OF_MESSAGES; i++) {
             testProducer.send(String.valueOf(i));
         }
 
-        await().atMost(5, SECONDS).until(() -> messageCounter.get() < NUMBER_OF_MESSAGES);
+        await().atMost(5, SECONDS).until(() -> messageCounter.get() == errorMessage);
+
+        KafConsumer<String, String> anotherConsumer = new KafConsumer<>(topic, props, 42, action1);
+        anotherConsumer.start();
+
+        await().atMost(5, SECONDS).until(() -> messageCounter.get() == NUMBER_OF_MESSAGES);
+
         testProducer.close();
         consumer.stop();
+        anotherConsumer.stop();
+    }
+
+    @Test
+    public void send_and_receive_with_multipartitions() throws Exception {
+        final String topic = "multip_consumer_topic";
+        cluster.createTopic(topic, 10);
+
+        int errorMessage = new Random().nextInt(NUMBER_OF_MESSAGES);
+
+        AtomicInteger messageCounter = new AtomicInteger();
+        KafRecordConsumer<ConsumerRecord<String, String>> action0 = (message) -> {
+            if (String.valueOf(errorMessage).equals(message.value())) {
+                throw new RuntimeException("Bad consumer");
+            }
+            messageCounter.incrementAndGet();
+        };
+
+        final KafRecordConsumer<ConsumerRecord<String, String>> action1 = (message) -> {
+            messageCounter.incrementAndGet();
+        };
+
+        KafConsumer<String, String> consumer = new KafConsumer<>(topic, props, 42, action0);
+        consumer.start();
+
+        KafConsumer<String, String> anotherConsumer1 = new KafConsumer<>(topic, props, 42, action0);
+        anotherConsumer1.start();
+
+        KafConsumer<String, String> anotherConsumer2 = new KafConsumer<>(topic, props, 42, action0);
+        anotherConsumer2.start();
+
+        KafConsumer<String, String> anotherConsumer3 = new KafConsumer<>(topic, props, 42, action1);
+        anotherConsumer3.start();
+
+        KafConsumer<String, String> anotherConsumer4 = new KafConsumer<>(topic, props, 42, action1);
+        anotherConsumer4.start();
+
+        KafConsumer<String, String> anotherConsumer5 = new KafConsumer<>(topic, props, 42, action1);
+        anotherConsumer5.start();
+
+        KafConsumer<String, String> anotherConsumer6 = new KafConsumer<>(topic, props, 42, action0);
+        anotherConsumer6.start();
+
+        SimpleTestProducer testProducer = new SimpleTestProducer("Lorem-Radio", topic,
+                "127.0.0.1:" + kafkaBrokerPort);
+
+        for (int i = 0; i < NUMBER_OF_MESSAGES; i++) {
+            testProducer.send(String.valueOf(i));
+        }
+
+        await().atMost(5, SECONDS).until(() -> messageCounter.get() == NUMBER_OF_MESSAGES);
+
+        testProducer.close();
+        consumer.stop();
+        anotherConsumer1.stop();
+        anotherConsumer2.stop();
+        anotherConsumer3.stop();
+        anotherConsumer4.stop();
+        anotherConsumer5.stop();
+        anotherConsumer6.stop();
     }
 
     @Test
@@ -132,7 +204,6 @@ public class KafConsumerIntegrationTest {
 
         SimpleTestProducer testProducer = new SimpleTestProducer("Lorem-Radio", topic,
                 "127.0.0.1:" + kafkaBrokerPort);
-        LOGGER.info("Sending {} messages", NUMBER_OF_MESSAGES);
         KafConsumer<String, String> anotherConsumer = null;
         for (int i = 0; i < NUMBER_OF_MESSAGES; i++) {
             testProducer.send(String.valueOf(i));
