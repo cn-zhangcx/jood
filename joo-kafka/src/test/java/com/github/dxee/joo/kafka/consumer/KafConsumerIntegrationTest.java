@@ -106,7 +106,7 @@ public class KafConsumerIntegrationTest {
             messageCounter.incrementAndGet();
         };
 
-        KafRecordConsumer<ConsumerRecord<String, String>> action1 = (message) -> {
+        final KafRecordConsumer<ConsumerRecord<String, String>> action1 = (message) -> {
             messageCounter.incrementAndGet();
         };
 
