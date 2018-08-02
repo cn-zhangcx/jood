@@ -71,7 +71,7 @@ public class KafConsumerIntegrationTest {
     @Test
     public void send_and_receive() throws Exception {
         final String topic = "my_topic";
-        cluster.createTopic(topic, 1);
+        cluster.createTopic(topic, 20, 1);
 
         AtomicInteger messageCounter = new AtomicInteger();
         KafRecordConsumer<ConsumerRecord<String, String>> action = (message) -> messageCounter.incrementAndGet();
@@ -135,7 +135,7 @@ public class KafConsumerIntegrationTest {
     @Test
     public void send_and_receive_with_multipartitions() throws Exception {
         final String topic = "multip_consumer_topic";
-        cluster.createTopic(topic, 10);
+        cluster.createTopic(topic, 20, 1);
 
         int errorMessage = new Random().nextInt(NUMBER_OF_MESSAGES);
 
@@ -151,26 +151,14 @@ public class KafConsumerIntegrationTest {
             messageCounter.incrementAndGet();
         };
 
-        KafConsumer<String, String> consumer = new KafConsumer<>(topic, props, 42, action0);
-        consumer.start();
+        KafConsumer<String, String> consumer1 = new KafConsumer<>(topic, props, 42, action0);
+        consumer1.start();
 
-        KafConsumer<String, String> anotherConsumer1 = new KafConsumer<>(topic, props, 42, action0);
-        anotherConsumer1.start();
+        KafConsumer<String, String> consumer2 = new KafConsumer<>(topic, props, 42, action0);
+        consumer2.start();
 
-        KafConsumer<String, String> anotherConsumer2 = new KafConsumer<>(topic, props, 42, action0);
-        anotherConsumer2.start();
-
-        KafConsumer<String, String> anotherConsumer3 = new KafConsumer<>(topic, props, 42, action1);
-        anotherConsumer3.start();
-
-        KafConsumer<String, String> anotherConsumer4 = new KafConsumer<>(topic, props, 42, action1);
-        anotherConsumer4.start();
-
-        KafConsumer<String, String> anotherConsumer5 = new KafConsumer<>(topic, props, 42, action1);
-        anotherConsumer5.start();
-
-        KafConsumer<String, String> anotherConsumer6 = new KafConsumer<>(topic, props, 42, action0);
-        anotherConsumer6.start();
+        KafConsumer<String, String> consumer3 = new KafConsumer<>(topic, props, 42, action1);
+        consumer3.start();
 
         SimpleTestProducer testProducer = new SimpleTestProducer("Lorem-Radio", topic,
                 "127.0.0.1:" + kafkaBrokerPort);
@@ -179,22 +167,18 @@ public class KafConsumerIntegrationTest {
             testProducer.send(String.valueOf(i));
         }
 
-        await().atMost(5, SECONDS).until(() -> messageCounter.get() == NUMBER_OF_MESSAGES);
+        await().atMost(10, SECONDS).until(() -> messageCounter.get() == NUMBER_OF_MESSAGES);
 
         testProducer.close();
-        consumer.stop();
-        anotherConsumer1.stop();
-        anotherConsumer2.stop();
-        anotherConsumer3.stop();
-        anotherConsumer4.stop();
-        anotherConsumer5.stop();
-        anotherConsumer6.stop();
+        consumer1.stop();
+        consumer2.stop();
+        consumer3.stop();
     }
 
     @Test
     public void reassignment() throws Exception {
         final String topic = "my_reassignment_topic";
-        cluster.createTopic(topic, 1);
+        cluster.createTopic(topic, 20, 1);
 
         AtomicInteger messageCounter = new AtomicInteger();
         KafRecordConsumer<ConsumerRecord<String, String>> action = (message) -> messageCounter.incrementAndGet();
@@ -216,7 +200,7 @@ public class KafConsumerIntegrationTest {
             }
         }
 
-        await().atMost(5, SECONDS).until(() -> messageCounter.get() >= NUMBER_OF_MESSAGES);
+        await().atMost(10, SECONDS).until(() -> messageCounter.get() >= NUMBER_OF_MESSAGES);
         testProducer.close();
         anotherConsumer.stop();
     }
@@ -227,7 +211,7 @@ public class KafConsumerIntegrationTest {
         final String group = "OneMessageGroup";
         props.setProperty(GROUP_ID_CONFIG, group);
 
-        cluster.createTopic(topic, 1);
+        cluster.createTopic(topic, 20, 1);
 
         AtomicInteger messageCounter = new AtomicInteger();
         KafRecordConsumer<ConsumerRecord<String, String>> action = (message) -> messageCounter.incrementAndGet();
