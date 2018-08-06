@@ -1,0 +1,14 @@
+dependencies {
+    compile project(':jood-api')
+
+    compile "javax.servlet:javax.servlet-api:$versions.servlet"
+
+    compile "org.eclipse.jetty:jetty-server:$versions.jetty"
+    compile "org.eclipse.jetty:jetty-servlet:$versions.jetty"
+    compile "org.eclipse.jetty:jetty-servlets:$versions.jetty"
+
+    compile "com.google.inject.extensions:guice-servlet:$versions.guice"
+
+    testCompile project(':jood-test')
+    testCompile "io.rest-assured:rest-assured:$versions.restassured"
+}

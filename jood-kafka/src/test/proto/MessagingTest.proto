@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package com.github.dxee.jood;
+
+option java_multiple_files = true;
+
+message EmptyMessage {
+
+}
+
+message SayHelloToCmd {
+    string name = 1;
+}
+
+message SayHelloToReply {
+    string greeting = 1;
+}
+
+message TypeDictionaryTest{
+    int32 cruftlevel = 1;
+}
+
+message TestMessageWithNoHandler {
+    string a_meaningless_field = 1;
+}
+
+message TreeNode {
+    string name = 1;
+    repeated TreeNode children = 2;
+}

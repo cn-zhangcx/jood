@@ -1,8 +1,8 @@
-rootProject.name = 'joo'
+rootProject.name = 'jood'
 
-include 'joo-api'
-include 'joo-jetty'
-include 'joo-kafka'
-include 'joo-metrics'
-include 'joo-test'
+include 'jood-api'
+include 'jood-jetty'
+include 'jood-kafka'
+include 'jood-metrics'
+include 'jood-test'
 
