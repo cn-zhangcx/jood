@@ -3,6 +3,7 @@ package com.github.dxee.jood.consumer;
 import com.google.common.base.Joiner;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
@@ -37,25 +38,25 @@ class ConsumerRecordRelay<K, V> implements Runnable {
     @Override
     public void run() {
         while (!stopped) {
-            consumer.poll(POLL_BLOCK_MILLIS).forEach(this::relayRecordToConsumerHandlingErrors);
+            ConsumerRecords<K, V> records = consumer.poll(POLL_BLOCK_MILLIS);
+            for (ConsumerRecord<K, V> record : records) {
+                try {
+                    kafConsumer.relay(record);
+                } catch (InterruptedException ignored) {
+                    LOGGER.info("Interrupted during relay");
+                } catch (Exception ex) {
+                    LOGGER.error("Error while relaying messages from kafka to queue, topic {}, partition {}",
+                            record.topic(),
+                            record.partition(),
+                            ex);
+                    kafConsumer.stop();
+                    break;
+                }
+            }
             commitOffsets();
         }
         consumer.close();
         LOGGER.info("Kafka message relay stopped");
-    }
-
-    private void relayRecordToConsumerHandlingErrors(ConsumerRecord<K, V> record) {
-        try {
-            kafConsumer.relay(record);
-        } catch (InterruptedException ignored) {
-            LOGGER.info("Interrupted during relay");
-        } catch (Exception ex) {
-            LOGGER.error("Error while relaying messages from kafka to queue, topic {}, partition {}",
-                    record.topic(),
-                    record.partition(),
-                    ex);
-            kafConsumer.stop();
-        }
     }
 
     public void setOffset(ConsumerRecord<K, V> record) {
