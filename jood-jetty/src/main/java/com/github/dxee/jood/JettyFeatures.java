@@ -16,24 +16,24 @@ public class JettyFeatures {
     /**
      * For Connector configuration
      **/
-    public static final String JETTY_CONNECTOR_HOST = "joo.jetty.connector.host";
-    public static final String JETTY_CONNECTOR_HTTP_PORT = "joo.jetty.connector.http.port";
+    public static final String JETTY_CONNECTOR_HOST = "jood.jetty.connector.host";
+    public static final String JETTY_CONNECTOR_HTTP_PORT = "jood.jetty.connector.http.port";
 
     /**
      * For jettry server
      **/
-    public static final String JETTY_SERVER_MAXJETTYTHREADS = "joo.jetty.server.maxjettythreads";
-    public static final String JETTY_SERVER_MINJETTYTHREADS = "joo.jetty.server.minjettythreads";
+    public static final String JETTY_SERVER_MAXJETTYTHREADS = "jood.jetty.server.maxjettythreads";
+    public static final String JETTY_SERVER_MINJETTYTHREADS = "jood.jetty.server.minjettythreads";
 
-    public static final String JETTY_SERVLET_CONTEXT = "joo.jetty.servlet.context";
+    public static final String JETTY_SERVLET_CONTEXT = "jood.jetty.servlet.context";
 
     /**
      * For HttpConfiguration
      */
     public static final String JETTY_HTTPCONFIGURATION_SENDXPOWEREDBY =
-            "joo.jetty.httpconfiguration.sendxpoweredby";
+            "jood.jetty.httpconfiguration.sendxpoweredby";
     public static final String JETTY_HTTPCONFIGURATION_SENDSERVERVERSION =
-            "joo.jetty.httpconfiguration.sendserverversion";
+            "jood.jetty.httpconfiguration.sendserverversion";
 
 
     private final PropertySource propertySource;
