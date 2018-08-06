@@ -30,7 +30,6 @@ import static org.apache.kafka.clients.consumer.ConsumerConfig.ENABLE_AUTO_COMMI
  *
  * @param <K> Key type
  * @param <V> Value type
- *
  * @author bing.fan
  * 2018-08-02 14:18
  */
@@ -82,7 +81,7 @@ public class KafConsumer<K, V> implements ConsumerRebalanceListener {
             }
 
             // Stop processor pool second
-            if (!MoreExecutors.shutdownAndAwaitTermination(pool, 10, SECONDS)) {
+            if (!MoreExecutors.shutdownAndAwaitTermination(pool, 60, SECONDS)) {
                 LOGGER.error("Pool was not terminated properly.");
             }
         }
@@ -96,20 +95,13 @@ public class KafConsumer<K, V> implements ConsumerRebalanceListener {
             throw new ConsumerException(String.format("Message from unexpected topic %s", record.topic()));
         }
 
-        PartitionProcessor<K, V> processor = processors.get(record.partition());
-        if (processor.isStopped()) {
-            throw new ConsumerException(String.format("Message processor is stopped, could not consume record %s",
+        PartitionProcessor<K, V> partitionProcessor = processors.get(record.partition());
+        if (partitionProcessor.isStopped()) {
+            throw new ConsumerException(String.format("PartitionProcessor is stopped, could not consume record %s",
                     record));
         }
 
-        processor.queue(record);
-    }
-
-    private void createProcessor(TopicPartition partition) {
-        PartitionProcessor<K, V> partitionProcessor = new PartitionProcessor<>(partition, relay, action, queueSize);
-
-        pool.execute(partitionProcessor);
-        processors.put(partition.partition(), partitionProcessor);
+        partitionProcessor.queue(record);
     }
 
     private Consumer<K, V> createConsumer() {
@@ -136,7 +128,12 @@ public class KafConsumer<K, V> implements ConsumerRebalanceListener {
 
     @Override
     public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
-        partitions.forEach(this::createProcessor);
+        partitions.forEach(partition -> {
+            PartitionProcessor<K, V> partitionProcessor =
+                    new PartitionProcessor<>(partition, relay, action, queueSize);
+            pool.execute(partitionProcessor);
+            processors.put(partition.partition(), partitionProcessor);
+        });
     }
 
     @Override

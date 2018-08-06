@@ -84,11 +84,9 @@ class ConsumerRecordRelay<K, V> implements Runnable {
     }
 
     private void callback(Map<TopicPartition, OffsetAndMetadata> offsets, Exception ex) {
-        Joiner.MapJoiner mapJoiner = Joiner.on(',').withKeyValueSeparator("=");
         if (ex != null) {
-            LOGGER.error("Error during offsets commit: '{}'", mapJoiner.join(offsets), ex);
-        } else {
-            LOGGER.trace("Commit offsets successfully, {}", mapJoiner.join(offsets));
+            Joiner.MapJoiner mapJoiner = Joiner.on(',').withKeyValueSeparator("=");
+            LOGGER.error("Error during offset commit: '{}'", mapJoiner.join(offsets), ex);
         }
     }
 }
