@@ -13,7 +13,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * ConsumerRecords relay here.
+ * Relay ConsumerRecords here.
  *
  * @author bing.fan
  * 2018-08-02 14:26

@@ -40,7 +40,7 @@ public class KafConsumer<K, V> implements ConsumerRebalanceListener {
     private final Properties kafkaConfig;
     private final String topic;
     private final int queueSize;
-    private final KafRecordConsumer<ConsumerRecord<K, V>> action;
+    private final MessageConsumer<ConsumerRecord<K, V>> action;
 
     private final Map<Integer, PartitionProcessor<K, V>> processors = new ConcurrentHashMap<>();
     private final ExecutorService pool;
@@ -50,50 +50,54 @@ public class KafConsumer<K, V> implements ConsumerRebalanceListener {
     private volatile ConsumerRecordRelay<K, V> relay;
 
     public KafConsumer(String topic, Properties kafkaConfig, int queueSize,
-                       KafRecordConsumer<ConsumerRecord<K, V>> action) {
+                       MessageConsumer<ConsumerRecord<K, V>> action) {
         this.topic = topic;
         this.kafkaConfig = KafConsumerConfigValidator.validate(kafkaConfig);
         this.action = action;
         this.queueSize = queueSize;
         this.pool = Executors.newCachedThreadPool();
-        this.consumer = createKafkaConsumer();
+        this.consumer = createConsumer();
     }
 
     public void start() {
         synchronized (lock) {
             if (relay != null) {
-                LOGGER.error("Consumer already started");
                 return;
             }
 
             // Connects to the kafka
             consumer.subscribe(Collections.singletonList(topic), this);
 
+            // Start relay
             relay = new ConsumerRecordRelay<>(consumer, this);
-            new Thread(relay, "kaf-relay-" + topic).start();
+            new Thread(relay, topic).start();
         }
     }
 
     public void stop() {
         synchronized (lock) {
-            if (relay == null) {
-                LOGGER.error("Consumer not started, nothing to stop");
-                return;
+            // Stop relay first
+            if (relay != null) {
+                relay.stop();
             }
-            relay.stop();
+
+            // Stop processor pool second
             if (!MoreExecutors.shutdownAndAwaitTermination(pool, 10, SECONDS)) {
                 LOGGER.error("Pool was not terminated properly.");
             }
         }
     }
 
+    /**
+     * Should only be called by {@link ConsumerRecordRelay}
+     */
     void relay(ConsumerRecord<K, V> record) throws InterruptedException {
         if (!topic.equals(record.topic())) {
             throw new ConsumerException(String.format("Message from unexpected topic %s", record.topic()));
         }
-        PartitionProcessor<K, V> processor = processors.get(record.partition());
 
-        if(processor.isStopped()) {
+        PartitionProcessor<K, V> processor = processors.get(record.partition());
+        if (processor.isStopped()) {
             throw new ConsumerException(String.format("Message processor is stopped, could not consume record %s",
                     record));
         }
@@ -108,7 +112,7 @@ public class KafConsumer<K, V> implements ConsumerRebalanceListener {
         processors.put(partition.partition(), partitionProcessor);
     }
 
-    private Consumer<K, V> createKafkaConsumer() {
+    private Consumer<K, V> createConsumer() {
         setDefaultPropertyIfNotPresent(kafkaConfig, CLIENT_ID_CONFIG, this::getClientId);
         setDefaultPropertyIfNotPresent(kafkaConfig, ENABLE_AUTO_COMMIT_CONFIG, () -> "false");
         setDefaultPropertyIfNotPresent(kafkaConfig, AUTO_OFFSET_RESET_CONFIG, () -> "earliest");

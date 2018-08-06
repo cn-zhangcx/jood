@@ -22,7 +22,7 @@ import static org.awaitility.Awaitility.await;
 @Category(IntegrationTest.class)
 public class KafConsumerIntegrationTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(KafConsumerIntegrationTest.class);
-    private static final int NUMBER_OF_MESSAGES = 2000;
+    private static final int NUMBER_OF_MESSAGES = 200000;
     private static final String TEST_GROUP = "TestGroup";
 
     private Properties props;
@@ -74,7 +74,7 @@ public class KafConsumerIntegrationTest {
         cluster.createTopic(topic, 20, 1);
 
         AtomicInteger messageCounter = new AtomicInteger();
-        KafRecordConsumer<ConsumerRecord<String, String>> action = (message) -> messageCounter.incrementAndGet();
+        MessageConsumer<ConsumerRecord<String, String>> action = (message) -> messageCounter.incrementAndGet();
 
         KafConsumer<String, String> consumer = new KafConsumer<>(topic, props, 42, action);
         consumer.start();
@@ -99,14 +99,14 @@ public class KafConsumerIntegrationTest {
         int errorMessage = new Random().nextInt(NUMBER_OF_MESSAGES);
 
         AtomicInteger messageCounter = new AtomicInteger();
-        KafRecordConsumer<ConsumerRecord<String, String>> action0 = (message) -> {
+        MessageConsumer<ConsumerRecord<String, String>> action0 = (message) -> {
             if (String.valueOf(errorMessage).equals(message.value())) {
                 throw new RuntimeException("Bad consumer");
             }
             messageCounter.incrementAndGet();
         };
 
-        final KafRecordConsumer<ConsumerRecord<String, String>> action1 = (message) -> {
+        final MessageConsumer<ConsumerRecord<String, String>> action1 = (message) -> {
             messageCounter.incrementAndGet();
         };
 
@@ -125,7 +125,7 @@ public class KafConsumerIntegrationTest {
         KafConsumer<String, String> anotherConsumer = new KafConsumer<>(topic, props, 42, action1);
         anotherConsumer.start();
 
-        await().atMost(5, SECONDS).until(() -> messageCounter.get() == NUMBER_OF_MESSAGES);
+        await().atMost(20, SECONDS).until(() -> messageCounter.get() >= NUMBER_OF_MESSAGES);
 
         testProducer.close();
         consumer.stop();
@@ -140,14 +140,14 @@ public class KafConsumerIntegrationTest {
         int errorMessage = new Random().nextInt(NUMBER_OF_MESSAGES);
 
         AtomicInteger messageCounter = new AtomicInteger();
-        KafRecordConsumer<ConsumerRecord<String, String>> action0 = (message) -> {
+        MessageConsumer<ConsumerRecord<String, String>> action0 = (message) -> {
             if (String.valueOf(errorMessage).equals(message.value())) {
                 throw new RuntimeException("Bad consumer");
             }
             messageCounter.incrementAndGet();
         };
 
-        final KafRecordConsumer<ConsumerRecord<String, String>> action1 = (message) -> {
+        final MessageConsumer<ConsumerRecord<String, String>> action1 = (message) -> {
             messageCounter.incrementAndGet();
         };
 
@@ -167,7 +167,7 @@ public class KafConsumerIntegrationTest {
             testProducer.send(String.valueOf(i));
         }
 
-        await().atMost(10, SECONDS).until(() -> messageCounter.get() == NUMBER_OF_MESSAGES);
+        await().atMost(30, SECONDS).until(() -> messageCounter.get() >= NUMBER_OF_MESSAGES);
 
         testProducer.close();
         consumer1.stop();
@@ -181,7 +181,7 @@ public class KafConsumerIntegrationTest {
         cluster.createTopic(topic, 20, 1);
 
         AtomicInteger messageCounter = new AtomicInteger();
-        KafRecordConsumer<ConsumerRecord<String, String>> action = (message) -> messageCounter.incrementAndGet();
+        MessageConsumer<ConsumerRecord<String, String>> action = (message) -> messageCounter.incrementAndGet();
 
         KafConsumer<String, String> consumer = new KafConsumer<>(topic, props, 42, action);
         consumer.start();
@@ -200,7 +200,7 @@ public class KafConsumerIntegrationTest {
             }
         }
 
-        await().atMost(10, SECONDS).until(() -> messageCounter.get() >= NUMBER_OF_MESSAGES);
+        await().atMost(20, SECONDS).until(() -> messageCounter.get() >= NUMBER_OF_MESSAGES);
         testProducer.close();
         anotherConsumer.stop();
     }
@@ -214,7 +214,7 @@ public class KafConsumerIntegrationTest {
         cluster.createTopic(topic, 20, 1);
 
         AtomicInteger messageCounter = new AtomicInteger();
-        KafRecordConsumer<ConsumerRecord<String, String>> action = (message) -> messageCounter.incrementAndGet();
+        MessageConsumer<ConsumerRecord<String, String>> action = (message) -> messageCounter.incrementAndGet();
 
         KafConsumer<String, String> consumer0 = new KafConsumer<>(topic, props, 5, action);
         consumer0.start();

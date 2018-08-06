@@ -22,11 +22,11 @@ class PartitionProcessor<K, V> implements Runnable {
 
     private final BlockingQueue<ConsumerRecord<K, V>> queue;
     private final ConsumerRecordRelay<K, V> relay;
-    private final KafRecordConsumer<ConsumerRecord<K, V>> action;
+    private final MessageConsumer<ConsumerRecord<K, V>> action;
     private final TopicPartition topicPartition;
 
     PartitionProcessor(TopicPartition topicPartition, ConsumerRecordRelay<K, V> relay,
-                       KafRecordConsumer<ConsumerRecord<K, V>> action, int queueSize) {
+                       MessageConsumer<ConsumerRecord<K, V>> action, int queueSize) {
         this.queue = new ArrayBlockingQueue<>(queueSize);
         this.relay = relay;
         this.action = action;
@@ -35,7 +35,7 @@ class PartitionProcessor<K, V> implements Runnable {
 
     @Override
     public void run() {
-        Thread.currentThread().setName("kaf-processor-" + topicPartition.toString());
+        Thread.currentThread().setName(topicPartition.toString());
         LOGGER.info("PartitionProcessor for {} started", topicPartition);
 
         ConsumerRecord<K, V> record = null;

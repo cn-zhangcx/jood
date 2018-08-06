@@ -4,7 +4,7 @@ import com.github.dxee.joo.JooContext;
 import com.github.dxee.joo.eventhandling.*;
 import com.github.dxee.joo.kafka.consumer.ConsumerException;
 import com.github.dxee.joo.kafka.consumer.KafConsumer;
-import com.github.dxee.joo.kafka.consumer.KafRecordConsumer;
+import com.github.dxee.joo.kafka.consumer.MessageConsumer;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Message;
 import com.google.protobuf.Parser;
@@ -39,7 +39,7 @@ public class KafkaProcessor implements EventProcessor {
         consumerProperties.put("value.deserializer", ByteArrayDeserializer.class.getName());
 
         kafConsumer = new KafConsumer<>(topic, consumerProperties, 1024,
-                new KafkaRecordConsumer());
+                new KafkaMessageConsumer());
         this.eventHandlerRegister = eventHandlerRegister;
     }
 
@@ -60,7 +60,7 @@ public class KafkaProcessor implements EventProcessor {
         return eventHandlerRegister;
     }
 
-    class KafkaRecordConsumer implements KafRecordConsumer<ConsumerRecord<String, byte[]>> {
+    class KafkaMessageConsumer implements MessageConsumer<ConsumerRecord<String, byte[]>> {
 
         @Override
         public void accept(ConsumerRecord<String, byte[]> record) {
