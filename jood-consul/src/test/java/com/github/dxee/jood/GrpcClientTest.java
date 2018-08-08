@@ -73,7 +73,7 @@ public class GrpcClientTest {
 
             @Provides
             @Singleton
-            public HelloWorldClient helloWorldClientWithNameResolver(
+            public HelloWorldClient helloWoldClient(
                     ServiceDiscovery serviceDiscovery) {
                 return new HelloWorldClient("test", host, port, serviceDiscovery);
             }
