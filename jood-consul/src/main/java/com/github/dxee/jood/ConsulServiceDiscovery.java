@@ -16,7 +16,7 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 
 /**
- * Consul service discovery
+ * Consul service discovery implements
  *
  * @author bing.fan
  * 2018-08-02 14:49

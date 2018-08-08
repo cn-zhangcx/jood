@@ -9,17 +9,21 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.inject.Inject;
+import javax.inject.Singleton;
 import java.io.IOException;
 
+@Singleton
 public class HelloWorldServer {
     private static final Logger LOGGER = LoggerFactory.getLogger(HelloWorldServer.class);
 
+    private final ServiceDiscovery serviceDiscovery;
     private final HelloWorldService helloWorldService;
 
     private Server server;
 
     @Inject
-    public HelloWorldServer(HelloWorldService helloWorldService) {
+    public HelloWorldServer(ServiceDiscovery serviceDiscovery, HelloWorldService helloWorldService) {
+        this.serviceDiscovery = serviceDiscovery;
         this.helloWorldService = helloWorldService;
     }
 
@@ -31,6 +35,10 @@ public class HelloWorldServer {
                 .build()
                 .start();
         LOGGER.info("server started, listening on " + port);
+
+        serviceDiscovery.createService("test","", null,
+                "localhost", port, "",
+                "localhost:"+port,"5s", "5s");
     }
 
     @PreDestroy
@@ -41,20 +49,6 @@ public class HelloWorldServer {
     }
 
     public static class HelloWorldService extends GreeterGrpc.GreeterImplBase {
-        private final ServiceDiscovery serviceDiscovery;
-
-        @Inject
-        public HelloWorldService(ServiceDiscovery serviceDiscovery) {
-            this.serviceDiscovery = serviceDiscovery;
-        }
-
-        @PostConstruct
-        public void postConstruct() {
-            serviceDiscovery.createService("test","", null,
-                    "localhost", 50051, "",
-                    "localhost:50051","5s", "5s");
-        }
-
         @Override
         public void sayHello(HelloRequest request,
                              StreamObserver<HelloReply> responseObserver) {
@@ -66,5 +60,4 @@ public class HelloWorldServer {
             responseObserver.onCompleted();
         }
     }
-
 }

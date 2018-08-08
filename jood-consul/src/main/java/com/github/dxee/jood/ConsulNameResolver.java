@@ -18,18 +18,23 @@ import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 
+/**
+ * Consul name resolver
+ *
+ * @author bing.fan
+ * 2018-08-08 20:17
+ */
 public class ConsulNameResolver extends NameResolver {
     private static final Logger LOGGER = LoggerFactory.getLogger(ConsulNameResolver.class);
-    private URI uri;
-    private String serviceName;
-    private int pauseInSeconds;
-    private ServiceDiscovery serviceDiscovery;
+
+    private final URI uri;
+    private final String serviceName;
+    private final int pauseInSeconds;
+    private final ServiceDiscovery serviceDiscovery;
+    private final ConnectionCheckTimer connectionCheckTimer;
 
     private Listener listener;
-
     private List<ServiceNode> nodes;
-
-    private ConnectionCheckTimer connectionCheckTimer;
 
     public ConsulNameResolver(URI uri, String serviceName, int pauseInSeconds, ServiceDiscovery serviceDiscovery) {
         this.uri = uri;
@@ -49,7 +54,6 @@ public class ConsulNameResolver extends NameResolver {
     @Override
     public void start(Listener listener) {
         this.listener = listener;
-        loadServiceNodes();
     }
 
     private void loadServiceNodes() {
@@ -78,13 +82,8 @@ public class ConsulNameResolver extends NameResolver {
         }
     }
 
-    public List<ServiceNode> getNodes() {
-        return nodes;
-    }
-
     @Override
     public void shutdown() {
-
     }
 
     private class ConnectionCheckTimer {
@@ -103,33 +102,31 @@ public class ConsulNameResolver extends NameResolver {
         public void runTimer() {
             timer.scheduleAtFixedRate(timerTask, delay, pauseInSeconds * 1000);
         }
-
-        public void reset() {
-            timerTask.cancel();
-            timer.purge();
-            timerTask = new ConnectionCheckTimerTask();
-        }
     }
 
     private class ConnectionCheckTimerTask extends TimerTask {
         @Override
         public void run() {
-            List<ServiceNode> nodes = getNodes();
-            if (null == nodes || nodes.isEmpty()) {
-                LOGGER.info("no service nodes...");
-                return;
-            }
-
-            for (ServiceNode node : nodes) {
-                String host = node.getHost();
-                int port = node.getPort();
-                try {
-                    new Socket(host, port);
-                } catch (IOException e) {
-                    LOGGER.error("service nodes being reloaded...", e);
+            try {
+                if (null == nodes || nodes.isEmpty()) {
                     loadServiceNodes();
-                    break;
+                    return;
                 }
+
+                for (ServiceNode node : nodes) {
+                    String host = node.getHost();
+                    int port = node.getPort();
+                    try {
+                        new Socket(host, port);
+                    } catch (IOException e) {
+                        LOGGER.error("service nodes being reloaded...", e);
+                        loadServiceNodes();
+                        break;
+                    }
+                }
+            } catch (Exception e) {
+                // Exception will cause task terminate, so catch it
+                LOGGER.error("ConnectionCheckTimerTask error", e);
             }
         }
     }

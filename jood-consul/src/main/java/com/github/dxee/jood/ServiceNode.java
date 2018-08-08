@@ -1,5 +1,11 @@
 package com.github.dxee.jood;
 
+/**
+ * ServiceNode
+ *
+ * @author bing.fan
+ * 2018-08-08 20:17
+ */
 public class ServiceNode {
     private String id;
     private String host;

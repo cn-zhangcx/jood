@@ -21,9 +21,7 @@ public class GrpcClientTest {
     private static int randomHttpsPort = Ports.nextAvailable();
 
     @Inject
-    private ServiceDiscovery serviceDiscovery;
-    @Inject
-    private GrpcLoadBalancer<GreeterGrpc, GreeterGrpc.GreeterBlockingStub, GreeterGrpc.GreeterStub> lb;
+    private HelloWorldClient helloWorldClient;
 
     @BeforeClass
     public static void setup() {
@@ -56,7 +54,7 @@ public class GrpcClientTest {
     }
 
     @Test
-    public void send_and_recive() {
+    public void send_and_receive() {
         String host = "localhost";
         int port = consul.getHttpPort();
 
@@ -64,7 +62,7 @@ public class GrpcClientTest {
             @Override
             protected void configure() {
                 bind(HelloWorldServer.class).asEagerSingleton();
-                bind(HelloWorldServer.HelloWorldService.class);
+                bind(HelloWorldServer.HelloWorldService.class).asEagerSingleton();
             }
 
             @Provides
@@ -75,9 +73,9 @@ public class GrpcClientTest {
 
             @Provides
             @Singleton
-            public GrpcLoadBalancer<GreeterGrpc, GreeterGrpc.GreeterBlockingStub, GreeterGrpc.GreeterStub>
-            grpcLoadBalancer(ServiceDiscovery serviceDiscovery) {
-                return new GrpcLoadBalancer<>("test", GreeterGrpc.class, serviceDiscovery);
+            public HelloWorldClient helloWorldClientWithNameResolver(
+                    ServiceDiscovery serviceDiscovery) {
+                return new HelloWorldClient("test", host, port, serviceDiscovery);
             }
         }, new ShutdownHookModule()).build();
 
@@ -88,7 +86,7 @@ public class GrpcClientTest {
                 .setName(grpcLoadBalancer)
                 .build();
 
-        HelloReply response = lb.getBlockingStub().sayHello(request);
+        HelloReply response = helloWorldClient.sayHello(request);
         Assert.assertEquals("hello " + grpcLoadBalancer, response.getMessage());
     }
 }
