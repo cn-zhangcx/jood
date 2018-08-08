@@ -1,0 +1,14 @@
+apply from: rootProject.file('gradle/grpc.gradle')
+
+dependencies {
+    compile project(':jood-api')
+
+    compile "io.grpc:grpc-netty:$versions.grpc"
+    compile "io.grpc:grpc-protobuf:$versions.grpc"
+    compile "io.grpc:grpc-stub:$versions.grpc"
+    compile "com.ecwid.consul:consul-api:$versions.consulApi"
+    compile "com.github.dxee:dject-core:$versions.dject"
+
+    testCompile project(':jood-test')
+    testCompile "com.pszymczyk.consul:embedded-consul:$versions.consulEmbedded"
+}

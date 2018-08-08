@@ -1,4 +1,0 @@
-dependencies {
-    compile "io.dropwizard.metrics:metrics-core:$versions.metrics"
-    compile "com.github.dxee:dject-core:$versions.dject"
-}

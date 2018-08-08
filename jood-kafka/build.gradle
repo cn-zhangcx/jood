@@ -1,14 +1,4 @@
-buildscript {
-    repositories {
-        mavenCentral()
-    }
-    dependencies {
-        classpath 'com.google.protobuf:protobuf-gradle-plugin:0.8.6'
-    }
-}
-
-apply plugin: 'idea'
-apply plugin: 'com.google.protobuf'
+apply from: rootProject.file('gradle/grpc.gradle')
 
 dependencies {
     compile project(':jood-api')
@@ -17,17 +7,4 @@ dependencies {
 
     testCompile project(':jood-test')
     testCompile "org.apache.kafka:kafka_2.12:$versions.kafka"
-}
-
-protobuf {
-    protoc {
-        artifact = "com.google.protobuf:protoc:3.6.1"
-    }
-}
-
-idea {
-    module {
-        sourceDirs += file("$protobuf.generatedFilesBaseDir/main/java");
-        sourceDirs += file("$protobuf.generatedFilesBaseDir/test/java");
-    }
 }

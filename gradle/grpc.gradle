@@ -1,0 +1,37 @@
+apply plugin: 'idea'
+apply plugin: 'com.google.protobuf'
+
+protobuf {
+    protoc {
+        artifact = 'com.google.protobuf:protoc:3.6.1'
+    }
+
+    plugins {
+        grpc {
+            artifact = "io.grpc:protoc-gen-grpc-java:$versions.grpc"
+        }
+    }
+
+    generateProtoTasks {
+        all().each { task ->
+            task.plugins {
+                grpc {}
+            }
+        }
+
+        all()*.plugins {
+            grpc {}
+        }
+    }
+
+    // generatedFilesBaseDir = "$projectDir/src/generated"
+}
+
+idea {
+    module {
+        sourceDirs += file("$protobuf.generatedFilesBaseDir/main/java");
+        sourceDirs += file("$protobuf.generatedFilesBaseDir/main/grpc");
+        sourceDirs += file("$protobuf.generatedFilesBaseDir/test/java");
+        sourceDirs += file("$protobuf.generatedFilesBaseDir/test/grpc");
+    }
+}
