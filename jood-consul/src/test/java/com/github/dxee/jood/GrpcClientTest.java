@@ -85,8 +85,8 @@ public class GrpcClientTest {
         HelloRequest request = HelloRequest.newBuilder()
                 .setName(grpcLoadBalancer)
                 .build();
-
         HelloReply response = helloWorldClient.sayHello(request);
+
         Assert.assertEquals("hello " + grpcLoadBalancer, response.getMessage());
     }
 }
