@@ -22,7 +22,7 @@ import static org.awaitility.Awaitility.await;
 @Category(IntegrationTest.class)
 public class KafConsumerIntegrationTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(KafConsumerIntegrationTest.class);
-    private static final int NUMBER_OF_MESSAGES = 200000;
+    private static final int NUMBER_OF_MESSAGES = 10000;
     private static final String TEST_GROUP = "TestGroup";
 
     private Properties props;

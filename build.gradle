@@ -39,21 +39,17 @@ subprojects {
             'guice'         : '4.2.0',
             'dject'         : '1.1.0',
             'protobuf'      : '3.6.1',
-            'metrics'       : '4.0.3',
             'kafka'         : '2.0.0',
-            'servlet'       : '4.0.1',
-            'jetty'         : '9.4.11.v20180605',
             'grpc'          : '1.4.0',
             'consulApi'     : '1.4.0',
-            'consulEmbedded': '1.1.1',
             'logback'       : '1.2.3',
             'slf4j'         : '1.7.25',
 
             'junit'         : '4.12',
             'mockito'       : '2.21.0',
-            'restassured'   : '3.1.0',
             'assertj'       : '3.10.0',
-            'awaitility'    : '3.1.2'
+            'awaitility'    : '3.1.2',
+            'consulEmbedded': '1.1.1'
     ]
 
     dependencies {

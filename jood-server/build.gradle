@@ -1,0 +1,9 @@
+apply from: rootProject.file('gradle/grpc.gradle')
+
+dependencies {
+    compile project(':jood-kafka')
+    compile project(':jood-consul')
+
+    testCompile project(':jood-test')
+    testCompile "com.pszymczyk.consul:embedded-consul:$versions.consulEmbedded"
+}

@@ -10,9 +10,15 @@ import com.ecwid.consul.v1.kv.model.PutParams;
 import com.ecwid.consul.v1.session.SessionClient;
 import com.ecwid.consul.v1.session.SessionConsulClient;
 import com.ecwid.consul.v1.session.model.NewSession;
+import com.github.dxee.jood.registry.ServiceDiscovery;
+import com.github.dxee.jood.registry.ServiceNode;
+import com.google.common.base.Preconditions;
+import com.google.common.base.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
+import javax.inject.Singleton;
 import java.util.*;
 
 /**
@@ -21,22 +27,25 @@ import java.util.*;
  * @author bing.fan
  * 2018-08-02 14:49
  */
+@Singleton
 public class ConsulServiceDiscovery implements ServiceDiscovery {
     private static final Logger LOGGER = LoggerFactory.getLogger(ConsulServiceDiscovery.class);
 
     private ConsulClient client;
     private SessionClient sessionClient;
 
-    public ConsulServiceDiscovery(String agentHost, int agentPort) {
-        client = new ConsulClient(agentHost, agentPort);
-        sessionClient = new SessionConsulClient(agentHost, agentPort);
+    @Inject
+    public ConsulServiceDiscovery(ConsulFeatures consulFeatures) {
+        client = new ConsulClient(consulFeatures.consulHost(), consulFeatures.consulPort());
+        sessionClient = new SessionConsulClient(consulFeatures.consulHost(), consulFeatures.consulPort());
 
-        LOGGER.info("consul client info: " + client.toString());
+        LOGGER.info("consul client info {}:{}", consulFeatures.consulHost(), consulFeatures.consulPort());
     }
 
     @Override
     public void createService(String serviceName, String id, List<String> tags, String address, int port,
                               String script, String tcp, String interval, String timeout) {
+        Preconditions.checkArgument(!Strings.isNullOrEmpty(serviceName), "service name must set");
         // register new service with associated health check
         NewService newService = new NewService();
         newService.setName(serviceName);

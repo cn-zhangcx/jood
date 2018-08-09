@@ -8,6 +8,7 @@ dependencies {
     compile "io.grpc:grpc-stub:$versions.grpc"
     compile "com.ecwid.consul:consul-api:$versions.consulApi"
     compile "com.github.dxee:dject-core:$versions.dject"
+    compile "com.google.inject.extensions:guice-assistedinject:$versions.guice"
 
     testCompile project(':jood-test')
     testCompile "com.pszymczyk.consul:embedded-consul:$versions.consulEmbedded"

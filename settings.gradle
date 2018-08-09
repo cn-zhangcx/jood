@@ -1,7 +1,7 @@
 rootProject.name = 'jood'
 
 include 'jood-api'
-include 'jood-jetty'
+include 'jood-server'
 include 'jood-kafka'
 include 'jood-consul'
 include 'jood-test'
