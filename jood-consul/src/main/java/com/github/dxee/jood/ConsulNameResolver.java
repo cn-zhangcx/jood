@@ -11,7 +11,6 @@ import javax.annotation.Nullable;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.net.SocketAddress;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
@@ -36,7 +35,7 @@ public class ConsulNameResolver extends NameResolver {
     private Listener listener;
     private List<ServiceNode> nodes;
 
-    public ConsulNameResolver(URI uri, String serviceName, int pauseInSeconds, ServiceDiscovery serviceDiscovery) {
+    private ConsulNameResolver(URI uri, String serviceName, int pauseInSeconds, ServiceDiscovery serviceDiscovery) {
         this.uri = uri;
         this.serviceName = serviceName;
         this.pauseInSeconds = pauseInSeconds;
@@ -57,7 +56,7 @@ public class ConsulNameResolver extends NameResolver {
     }
 
     private void loadServiceNodes() {
-        List<EquivalentAddressGroup> addrs = new ArrayList<>();
+        List<EquivalentAddressGroup> addresses = new ArrayList<>();
 
         nodes = serviceDiscovery.getHealthServices(serviceName);
         if (nodes == null || nodes.size() == 0) {
@@ -70,20 +69,18 @@ public class ConsulNameResolver extends NameResolver {
         for (ServiceNode node : nodes) {
             host = node.getHost();
             port = node.getPort();
-            List<SocketAddress> sockaddrsList = new ArrayList<SocketAddress>();
-            sockaddrsList.add(new InetSocketAddress(host, port));
-            addrs.add(new EquivalentAddressGroup(sockaddrsList));
-
+            addresses.add(new EquivalentAddressGroup(new InetSocketAddress(host, port)));
             LOGGER.info("Add addr, serviceName: [{}], host: [{}], port: [{}]", serviceName, host, port);
         }
 
-        if (addrs.size() > 0) {
-            listener.onAddresses(addrs, Attributes.EMPTY);
+        if (addresses.size() > 0) {
+            listener.onAddresses(addresses, Attributes.EMPTY);
         }
     }
 
     @Override
     public void shutdown() {
+        connectionCheckTimer.stopTimer();
     }
 
     private class ConnectionCheckTimer {
@@ -102,6 +99,11 @@ public class ConsulNameResolver extends NameResolver {
         public void runTimer() {
             timer.scheduleAtFixedRate(timerTask, delay, pauseInSeconds * 1000);
         }
+
+        public void stopTimer() {
+            timer.cancel();
+            LOGGER.info("ConnectionCheckTimer stopped");
+        }
     }
 
     private class ConnectionCheckTimerTask extends TimerTask {
@@ -117,7 +119,7 @@ public class ConsulNameResolver extends NameResolver {
                     String host = node.getHost();
                     int port = node.getPort();
                     try {
-                        new Socket(host, port);
+                        new Socket(host, port).close();
                     } catch (IOException e) {
                         LOGGER.error("service nodes being reloaded...", e);
                         loadServiceNodes();
@@ -132,6 +134,8 @@ public class ConsulNameResolver extends NameResolver {
     }
 
     public static class ConsulNameResolverProvider extends NameResolverProvider {
+        private static final String CONSUL = "consul";
+
         private final String serviceName;
         private final int pauseInSeconds;
         private final ServiceDiscovery serviceDiscovery;
@@ -160,7 +164,7 @@ public class ConsulNameResolver extends NameResolver {
 
         @Override
         public String getDefaultScheme() {
-            return "consul";
+            return CONSUL;
         }
     }
 }
