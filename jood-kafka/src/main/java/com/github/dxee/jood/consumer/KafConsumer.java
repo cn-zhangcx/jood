@@ -9,9 +9,10 @@ import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.util.*;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -19,7 +20,6 @@ import java.util.function.Supplier;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.apache.kafka.clients.consumer.ConsumerConfig.AUTO_OFFSET_RESET_CONFIG;
-import static org.apache.kafka.clients.consumer.ConsumerConfig.CLIENT_ID_CONFIG;
 import static org.apache.kafka.clients.consumer.ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG;
 
 /**
@@ -81,7 +81,7 @@ public class KafConsumer<K, V> implements ConsumerRebalanceListener {
             }
 
             // Stop processor pool second
-            if (!MoreExecutors.shutdownAndAwaitTermination(pool, 60, SECONDS)) {
+            if (!MoreExecutors.shutdownAndAwaitTermination(pool, 10, SECONDS)) {
                 LOGGER.error("Pool was not terminated properly.");
             }
         }
@@ -97,7 +97,7 @@ public class KafConsumer<K, V> implements ConsumerRebalanceListener {
 
         PartitionProcessor<K, V> partitionProcessor = processors.get(record.partition());
         if (partitionProcessor.isStopped()) {
-            throw new ConsumerException(String.format("PartitionProcessor is stopped, could not consume record %s",
+            throw new ConsumerException(String.format("Partition processor is stopped, could not consume record %s",
                     record));
         }
 
@@ -105,7 +105,6 @@ public class KafConsumer<K, V> implements ConsumerRebalanceListener {
     }
 
     private Consumer<K, V> createConsumer() {
-        setDefaultPropertyIfNotPresent(kafkaConfig, CLIENT_ID_CONFIG, this::getClientId);
         setDefaultPropertyIfNotPresent(kafkaConfig, ENABLE_AUTO_COMMIT_CONFIG, () -> "false");
         setDefaultPropertyIfNotPresent(kafkaConfig, AUTO_OFFSET_RESET_CONFIG, () -> "earliest");
         return new KafkaConsumer<K, V>(kafkaConfig);
@@ -118,14 +117,6 @@ public class KafConsumer<K, V> implements ConsumerRebalanceListener {
         props.put(propertyName, defaultValue.get());
     }
 
-    private String getClientId() {
-        try {
-            return String.format("%s-%s", InetAddress.getLocalHost().getHostName(), topic);
-        } catch (UnknownHostException ex) {
-            throw new ConsumerException("Could not retrieve client identifier", ex);
-        }
-    }
-
     @Override
     public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
         partitions.forEach(partition -> {
@@ -133,6 +124,7 @@ public class KafConsumer<K, V> implements ConsumerRebalanceListener {
                     new PartitionProcessor<>(partition, relay, action, queueSize);
             pool.execute(partitionProcessor);
             processors.put(partition.partition(), partitionProcessor);
+            LOGGER.debug("Partition assigned {}", partition);
         });
     }
 
@@ -143,6 +135,7 @@ public class KafConsumer<K, V> implements ConsumerRebalanceListener {
             partitionProcessor.stop();
             processors.remove(partition.partition());
             relay.removePartitionFromOffset(partition);
+            LOGGER.debug("Partition removed {}", partition);
         });
     }
 }

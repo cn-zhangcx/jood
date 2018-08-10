@@ -36,7 +36,7 @@ class PartitionProcessor<K, V> implements Runnable {
     @Override
     public void run() {
         Thread.currentThread().setName(topicPartition.toString());
-        LOGGER.info("PartitionProcessor for {} started", topicPartition);
+        LOGGER.info("Partition processor for {} started", topicPartition);
 
         ConsumerRecord<K, V> record = null;
         try {
@@ -46,14 +46,14 @@ class PartitionProcessor<K, V> implements Runnable {
                 relay.setOffset(record);
             }
         } catch (InterruptedException ignored) {
-            LOGGER.debug("PartitionProcessor for {} interrupted while waiting for messages", topicPartition);
+            LOGGER.debug("Partition processor for {} interrupted while waiting for messages", topicPartition);
         } catch (Exception ex) {
             LOGGER.error("Exception during processing topic partition {}, consumer record {}. Stopping!",
                     topicPartition, record, ex);
         }
         stop();
         queue.clear();
-        LOGGER.info("PartitionProcessor for {} stopped", topicPartition);
+        LOGGER.info("Partition processor for {} stopped", topicPartition);
     }
 
     public void stop() {
