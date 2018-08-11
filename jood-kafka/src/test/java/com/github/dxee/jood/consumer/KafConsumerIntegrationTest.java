@@ -95,7 +95,7 @@ public class KafConsumerIntegrationTest {
         AtomicInteger exceptionCounter = new AtomicInteger();
         AtomicInteger messageCounter = new AtomicInteger();
         MessageConsumer<ConsumerRecord<String, String>> action0 = (message) -> {
-            if (exceptionCounter.incrementAndGet() > NUMBER_OF_MESSAGES/3) {
+            if (exceptionCounter.incrementAndGet() > NUMBER_OF_MESSAGES / 3) {
                 throw new RuntimeException("Bad consumer");
             }
             messageCounter.incrementAndGet();

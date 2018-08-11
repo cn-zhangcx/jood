@@ -10,6 +10,7 @@ import com.ecwid.consul.v1.kv.model.PutParams;
 import com.ecwid.consul.v1.session.SessionClient;
 import com.ecwid.consul.v1.session.SessionConsulClient;
 import com.ecwid.consul.v1.session.model.NewSession;
+import com.github.dxee.jood.registry.ServiceDefine;
 import com.github.dxee.jood.registry.ServiceDiscovery;
 import com.github.dxee.jood.registry.ServiceNode;
 import com.google.common.base.Preconditions;
@@ -43,29 +44,29 @@ public class ConsulServiceDiscovery implements ServiceDiscovery {
     }
 
     @Override
-    public void createService(String serviceName, String id, List<String> tags, String address, int port,
-                              String script, String tcp, String interval, String timeout) {
-        Preconditions.checkArgument(!Strings.isNullOrEmpty(serviceName), "service name must set");
+    public void createService(ServiceDefine serviceDefine) {
+        Preconditions.checkArgument(!Strings.isNullOrEmpty(serviceDefine.getServiceName()),
+                "service name must set");
         // register new service with associated health check
         NewService newService = new NewService();
-        newService.setName(serviceName);
-        newService.setId(id);
-        newService.setAddress(address);
-        newService.setPort(port);
-        if (tags != null) {
-            newService.setTags(tags);
+        newService.setName(serviceDefine.getServiceName());
+        newService.setId(serviceDefine.getId());
+        newService.setAddress(serviceDefine.getAddress());
+        newService.setPort(serviceDefine.getPort());
+        if (serviceDefine.getTags() != null) {
+            newService.setTags(serviceDefine.getTags());
         }
 
         NewService.Check serviceCheck = new NewService.Check();
-        if (script != null) {
-            serviceCheck.setScript(script);
+        if (serviceDefine.getScript() != null) {
+            serviceCheck.setScript(serviceDefine.getScript());
         }
-        if (tcp != null) {
-            serviceCheck.setTcp(tcp);
+        if (serviceDefine.getTcp() != null) {
+            serviceCheck.setTcp(serviceDefine.getTcp());
         }
-        serviceCheck.setInterval(interval);
-        if (timeout != null) {
-            serviceCheck.setTimeout(timeout);
+        serviceCheck.setInterval(serviceDefine.getInterval());
+        if (serviceDefine.getTimeout() != null) {
+            serviceCheck.setTimeout(serviceDefine.getTimeout());
         }
         newService.setCheck(serviceCheck);
 

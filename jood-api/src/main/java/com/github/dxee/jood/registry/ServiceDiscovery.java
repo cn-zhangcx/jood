@@ -14,18 +14,9 @@ public interface ServiceDiscovery {
 
     /**
      * create service to consul
-     * @param serviceName
-     * @param id
-     * @param tags
-     * @param address
-     * @param port
-     * @param script
-     * @param tcp         "localhost:9911"
-     * @param interval    "10s"
-     * @param timeout     "1s"
+     * @param serviceDefine
      */
-    void createService(String serviceName, String id, List<String> tags, String address, int port, String script,
-                       String tcp, String interval, String timeout);
+    void createService(ServiceDefine serviceDefine);
 
     List<ServiceNode> getHealthServices(String path);
 

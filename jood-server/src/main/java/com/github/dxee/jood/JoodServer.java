@@ -2,6 +2,7 @@ package com.github.dxee.jood;
 
 import com.github.dxee.dject.lifecycle.LifecycleListener;
 import com.github.dxee.dject.lifecycle.LifecycleShutdown;
+import com.github.dxee.jood.registry.ServiceDefine;
 import com.github.dxee.jood.registry.ServiceDiscovery;
 import io.grpc.BindableService;
 import io.grpc.Server;
@@ -61,14 +62,18 @@ public class JoodServer implements LifecycleListener {
     }
 
     private void consulRegistry() {
-        serviceDiscovery.createService(
-                joodFeatures.grpcServiceName(),
-                "", null,
-                joodFeatures.grpcHost(), joodFeatures.grpcPort(),
-                "",
-                joodFeatures.grpcHost() + ":" + joodFeatures.grpcPort(),
-                consulFeatures.consulServiceCheckInterval(), consulFeatures.consulServiceCheckTimeout()
-        );
+        ServiceDefine serviceDefine = ServiceDefine.newBuilder()
+                .withAddress(joodFeatures.grpcHost())
+                .withServiceName(joodFeatures.grpcServiceName())
+                .withId("")
+                .withInterval(consulFeatures.consulServiceCheckInterval())
+                .withPort(joodFeatures.grpcPort())
+                .withScript("")
+                .withTags(null)
+                .withTcp(joodFeatures.grpcHost() + ":" + joodFeatures.grpcPort())
+                .withTimeout(consulFeatures.consulServiceCheckTimeout())
+                .build();
+        serviceDiscovery.createService(serviceDefine);
     }
 
     @Override

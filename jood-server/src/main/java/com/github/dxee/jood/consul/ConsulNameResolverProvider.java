@@ -37,7 +37,7 @@ public class ConsulNameResolverProvider extends NameResolverProvider {
     @Nullable
     @Override
     public NameResolver newNameResolver(URI uri, Attributes attributes) {
-        if(null == nameResolver) {
+        if (null == nameResolver) {
             nameResolver = consulNameResolverFactory.create(uri, serviceName);
         }
         return nameResolver;
