@@ -1,5 +1,7 @@
-package com.github.dxee.jood;
+package com.github.dxee.jood.channel;
 
+import com.github.dxee.jood.ConsulFeatures;
+import com.github.dxee.jood.consul.ConsulNameResolverProviderFactory;
 import com.google.inject.assistedinject.Assisted;
 import io.grpc.Channel;
 import io.grpc.ManagedChannelBuilder;
@@ -13,15 +15,15 @@ import javax.inject.Inject;
  * @author bing.fan
  * 2018-08-02 14:29
  */
-public class ChannelProvider {
+public class GrpcChannel {
     private final String serviceName;
     private final ConsulFeatures consulFeatures;
     private final ConsulNameResolverProviderFactory consulNameResolverProviderFactory;
 
     @Inject
-    public ChannelProvider(ConsulNameResolverProviderFactory consulNameResolverProviderFactory,
-                           ConsulFeatures consulFeatures,
-                           @Assisted String serviceName) {
+    public GrpcChannel(ConsulNameResolverProviderFactory consulNameResolverProviderFactory,
+                       ConsulFeatures consulFeatures,
+                       @Assisted String serviceName) {
         this.consulFeatures = consulFeatures;
         this.consulNameResolverProviderFactory = consulNameResolverProviderFactory;
         this.serviceName = serviceName;

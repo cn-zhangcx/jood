@@ -1,5 +1,11 @@
 package com.github.dxee.jood;
 
+import com.github.dxee.jood.channel.GrpcChannel;
+import com.github.dxee.jood.channel.GrpcChannelFactory;
+import com.github.dxee.jood.consul.ConsulNameResolver;
+import com.github.dxee.jood.consul.ConsulNameResolverFactory;
+import com.github.dxee.jood.consul.ConsulNameResolverProvider;
+import com.github.dxee.jood.consul.ConsulNameResolverProviderFactory;
 import com.google.inject.AbstractModule;
 import com.google.inject.assistedinject.FactoryModuleBuilder;
 
@@ -14,8 +20,8 @@ public class JoodModule extends AbstractModule {
     @Override
     protected void configure() {
         install(new FactoryModuleBuilder()
-                .implement(ChannelProvider.class, ChannelProvider.class)
-                .build(ChannelProviderFactory.class));
+                .implement(GrpcChannel.class, GrpcChannel.class)
+                .build(GrpcChannelFactory.class));
 
         install(new FactoryModuleBuilder()
                 .implement(ConsulNameResolver.class, ConsulNameResolver.class)

@@ -1,6 +1,6 @@
 package com.github.dxee.jood;
 
-import io.grpc.Channel;
+import com.github.dxee.jood.channel.GrpcChannelFactory;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -12,8 +12,8 @@ public class HelloWorldClient extends JoodClient {
     private final Greeter1Grpc.Greeter1BlockingStub blockingStub1;
 
     @Inject
-    public HelloWorldClient(ChannelProviderFactory channelProviderFactory) {
-        super(SERVICE_NAME, channelProviderFactory);
+    public HelloWorldClient(GrpcChannelFactory grpcChannelFactory) {
+        super(SERVICE_NAME, grpcChannelFactory);
         blockingStub = GreeterGrpc.newBlockingStub(channel);
         blockingStub1 = Greeter1Grpc.newBlockingStub(channel);
     }

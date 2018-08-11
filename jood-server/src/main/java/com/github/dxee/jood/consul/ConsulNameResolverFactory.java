@@ -1,4 +1,4 @@
-package com.github.dxee.jood;
+package com.github.dxee.jood.consul;
 
 import java.net.URI;
 

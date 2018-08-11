@@ -1,6 +1,4 @@
-package com.github.dxee.jood;
-
-import java.net.URI;
+package com.github.dxee.jood.consul;
 
 /**
  * ConsulNameResolverProvider factory

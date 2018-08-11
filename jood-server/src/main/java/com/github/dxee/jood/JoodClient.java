@@ -1,5 +1,6 @@
 package com.github.dxee.jood;
 
+import com.github.dxee.jood.channel.GrpcChannelFactory;
 import io.grpc.Channel;
 
 /**
@@ -10,12 +11,12 @@ import io.grpc.Channel;
  */
 public abstract class JoodClient {
     protected final String serviceName;
-    protected final ChannelProviderFactory channelProviderFactory;
+    protected final GrpcChannelFactory grpcChannelFactory;
     protected final Channel channel;
 
-    public JoodClient(String serviceName, ChannelProviderFactory channelProviderFactory) {
+    public JoodClient(String serviceName, GrpcChannelFactory grpcChannelFactory) {
         this.serviceName = serviceName;
-        this.channelProviderFactory = channelProviderFactory;
-        this.channel = channelProviderFactory.create(serviceName).channel();
+        this.grpcChannelFactory = grpcChannelFactory;
+        this.channel = grpcChannelFactory.create(serviceName).channel();
     }
 }

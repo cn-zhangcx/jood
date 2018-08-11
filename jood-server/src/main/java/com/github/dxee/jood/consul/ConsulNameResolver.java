@@ -1,5 +1,6 @@
-package com.github.dxee.jood;
+package com.github.dxee.jood.consul;
 
+import com.github.dxee.jood.JoodFeatures;
 import com.github.dxee.jood.registry.ServiceDiscovery;
 import com.github.dxee.jood.registry.ServiceNode;
 import com.google.inject.assistedinject.Assisted;
